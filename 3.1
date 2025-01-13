@@ -1,0 +1,600 @@
+#include <Arduino.h>
+#include <EEPROM.h>
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+#include <RTClib.h>                 // for RTC
+#include "DHT_Async.h"
+#define  ParametruVersija 1
+
+#define DHT_SENSOR_TYPE DHT_TYPE_11
+
+static const int Enkoders_CLK = 2;
+static const int Enkoders_DT = 3;
+static const int Enkoders_SW = 5;
+
+//#define DHT_SENSOR_TYPE DHT_TYPE_21
+//#define DHT_SENSOR_TYPE DHT_TYPE_22
+
+static const int DHT_SENSOR_PIN = 10;
+DHT_Async dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
+
+LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+RTC_DS3231 pulkstenis;                     // create rtc for the DS3231 RTC module, address is fixed at 0x68
+//#define  pulkstenaAtmina_I2C 0x57;
+
+int counter = 0;
+int currentStateCLK;
+int lastStateCLK;
+String currentDir ="";
+
+enum Menu_Izvelnes{
+  Galvena=0,
+  Menu=5,
+  DatumsLaiks=10,
+  Saullekts=20,
+  Diena=30,
+  Vakars=40,
+  Nakts=50,
+  CO2=60,
+  Tempratura=70,
+  Barosana=80
+};
+#define  ZimejamieMenuci 9
+
+Menu_Izvelnes Menu_AktivaIzvelne=Galvena;
+Menu_Izvelnes Menu_IeprieksejaIzvelne=Galvena;
+int Menu_KursoraPozicija=0;
+int Menu_MinVertiba=0;
+int Menu_MaxVertiba=0;
+
+void Ekrans(){
+
+ 
+
+  switch(Menu_AktivaIzvelne){
+    case Galvena:
+       ZimePamatlogu();
+       break;
+    case Menu:
+       ZimeMenu();
+       break;
+
+    default:
+      break;
+
+  }
+
+}
+
+
+void  ZimePamatlogu(){
+  if(Menu_AktivaIzvelne!=Menu_IeprieksejaIzvelne){
+    Menu_IeprieksejaIzvelne=Menu_AktivaIzvelne;
+    counter=0;   
+    lcd.clear();
+    lcd.noCursor();
+    lcd.noBlink();
+   }
+  displayTime();
+}
+long gaismaEkranam=0;
+
+void Menu_OnClick(){
+  gaismaEkranam= millis() + 60*1000; //Iesledzam gaismu uz 60 sekundēm
+
+  switch(Menu_AktivaIzvelne){
+    case Galvena:
+       Menu_AktivaIzvelne=Menu;
+       return;
+
+    case Menu:
+       switch (Menu_KursoraPozicija){
+          case 0:
+          case 9:
+            Menu_AktivaIzvelne=Galvena;
+            return;
+          case 1:
+            Menu_AktivaIzvelne=DatumsLaiks;
+            return;
+          case 20:
+            Menu_AktivaIzvelne=Saullekts;
+            return;
+          case 30:
+            Menu_AktivaIzvelne=Diena;
+            return;
+          case 40:
+            Menu_AktivaIzvelne=Vakars;
+            return;
+          case 50:
+            Menu_AktivaIzvelne=Nakts;
+            return;
+          case 60:
+            Menu_AktivaIzvelne=CO2;
+            return;
+          case 70:
+            Menu_AktivaIzvelne=Tempratura;
+            return;
+          case 80:
+            Menu_AktivaIzvelne=Barosana;
+            return;
+          
+        default:
+          Menu_AktivaIzvelne=Galvena;
+          break;
+       }
+       
+       return;
+
+    default:
+      break;
+
+  }
+
+}
+
+int ZimeMenu_Nobide;
+int ZimeMenu_VecaisLogs;
+int ZimeMenu_NobideVeca;
+void  ZimeMenu(){
+   
+    String   menuPunkti[10]={
+      "<--Atgriesties  ",
+      "Datums un laiks ",
+      "Saullekts       ", 
+      "Diena           ", 
+      "Vakars          ",  
+      "Nakts           ", 
+      "CO2             ",
+      "Tempratura      ",
+      "Barosana        ",
+      "<--Atgriesties  "} ; 
+       
+   Menu_MinVertiba=0;
+   Menu_MaxVertiba=ZimejamieMenuci;
+   int x=counter /2;
+
+   if(Menu_AktivaIzvelne!=Menu_IeprieksejaIzvelne){
+    Menu_IeprieksejaIzvelne=Menu_AktivaIzvelne;
+    counter=Menu_MinVertiba;
+    x=1;
+    counter=2;
+    ZimeMenu_Nobide=0;
+    ZimeMenu_VecaisLogs=-10;
+    ZimeMenu_NobideVeca=-10;
+    lcd.clear();     
+    lcd.cursor();
+    lcd.blink();
+   }
+   
+   if(x<0){
+      x=0;
+      counter=0;
+   }
+
+  if(x>Menu_MaxVertiba){
+      x=Menu_MaxVertiba;
+      counter=Menu_MaxVertiba*2 ;
+   }
+   
+  if(x==Menu_MaxVertiba){
+     ZimeMenu_Nobide=-1;      
+   }
+   if(x==0){
+    ZimeMenu_Nobide=0;
+   }
+   int logs=x+ZimeMenu_Nobide;
+
+  if(ZimeMenu_VecaisLogs!=logs) {
+    ZimeMenu_VecaisLogs=logs;
+    lcd.setCursor(0,0);
+    lcd.print(menuPunkti[logs]);
+    lcd.setCursor(0,1);
+    lcd.print(menuPunkti[logs+1]);
+    ZimeMenu_NobideVeca=-10;
+  }
+
+  if(ZimeMenu_NobideVeca!=ZimeMenu_Nobide){
+    ZimeMenu_NobideVeca=ZimeMenu_Nobide;
+    if(ZimeMenu_Nobide==0) 
+        {        
+          lcd.setCursor(0,0); 
+        } else {
+          lcd.setCursor(0,1); 
+        }
+   }
+    
+  Menu_KursoraPozicija=x;
+  
+  Serial.print("X=");
+  Serial.println(x);
+
+ 
+   Serial.print("ZimeMenu_Nobide=");
+  Serial.println(ZimeMenu_Nobide);
+  
+ 
+
+
+
+/*
+  //lcd.autoscroll();
+  lcd.write(byte(0));
+  lcd.write(byte(1));
+   lcd.write(byte(2));
+   lcd.print("CO");
+   lcd.write(byte(3));
+   lcd.write(byte(4));
+   lcd.write(byte(5));
+   lcd.write(byte(6));
+   lcd.write(byte(7));
+   lcd.setCursor(1,2);
+   lcd.setCursor(1,0);
+ // lcd.print("@ Hello, world!");
+  
+    lcd.blink();
+*/
+  
+}
+
+
+DateTime now;
+struct Laiks {
+  uint8_t Stundas;
+  uint8_t Minutes;
+};
+
+struct Parametri{
+  Laiks Sulekts = { 10,0 };
+  Laiks Saulriets = { 20,00 };
+  Laiks Diena = { 11,00 };
+  Laiks Nakts = { 22,00 };
+
+  bool  BaroNedelasDienas[7]={1,1,1,1,1,1,0};
+  Laiks Barosana = { 22,00 };
+
+  Laiks CO2On = { 10,30 };
+  Laiks CO2Off = { 19,30 };
+
+  bool CO2Izmatosana=1;  
+  float Temp=27;  
+  float TempTrauksme=4;
+ 
+  
+  uint32_t versija=ParametruVersija;
+};
+
+Parametri parametri;
+
+bool fonaGaisma=0;
+#define CelsijaGrads 0xDF
+#define BultaAtpakal 0x7F
+#define BultaUzPrieksu 0x7E
+
+uint8_t Simboli_Zivs[8]  = {0x0,0x8,0x16,0x1f,0x16,0x4,0x0};
+/*uint8_t Simboli_CO2_1[8]  = {000000,
+                     000011,
+                     000100,
+                     000100,
+                     000100,
+                     000011,
+                     000000};*/
+
+uint8_t Simboli_Sh[8]  = {B10010,
+                     B01100,
+                     B01110,
+                     B10000,
+                     B01110,
+                     B00001,
+                     B01110};
+
+uint8_t Simboli_ee[8]  = {B01110,
+                     B00000,
+                     B01110,
+                     B10001,
+                     B11111,
+                     B10000,
+                     B01110};
+
+
+/*uint8_t Simboli_CO2_2[8]  = {B00000,
+                     B01100,
+                     B10010,
+                     B10010,
+                     B01100,
+                     B00011,
+                     B00011};*/
+
+uint8_t Simboli_CO2_2[8]  = {B00000,
+                     B00000,
+                     B00000,
+                     B01100,
+                     B10010,
+                     B00100,                     
+                     B11110};
+
+uint8_t Simboli_Saulekts[8]  = {B00000,
+                     B00000,
+                     B00100,
+                     B10101,
+                     B00000,
+                     B01110,
+                     B11111};
+uint8_t Simboli_Saule[8]  = {B00000,
+                     B01110,
+                     B11111,
+                     B11111,
+                     B11111,
+                     B01110,
+                     B00000};
+
+uint8_t Simboli_Saulriets[8]  = {B00000,
+                     B01110,
+                     B11111,
+                     B00000,
+                     B01110,
+                     B00000,
+                     B00100};
+
+uint8_t Simboli_Nakts[8]  = {B00110,
+                     B01100,
+                     B11000,
+                     B11000,
+                     B01111,
+                     B00110,
+                     B00000};
+
+
+
+// ===========================================================================  Parametri
+
+void param_UzstadaNoklusetos(){
+  Parametri parametri;
+  //Kopē visus struktūras datus atmiņā
+  memcpy(&parametri,&parametri,sizeof parametri );
+}
+
+void param_Nolasit(){
+  //No programmas atmiņas vai pastāvīgo mainīgo atmiņas nolasa parametrus
+   EEPROM.get(0, parametri);
+   //Pārbauda vai parametri nav mainījušies
+   if(parametri.versija!=ParametruVersija){
+     param_UzstadaNoklusetos();
+   }
+}
+
+void param_Saglabat(){
+  //TODO: Pārbauda vai kaut kas ir mainijies
+   Parametri parametriTemp;
+  EEPROM.get(0, parametriTemp);
+  /*if(
+    parametriTemp.versija==parametri.versija 
+    && parametriTemp.versija==parametri.versija 
+  ){
+    return;
+  }
+  */
+
+  //Saglabā parametrus - max 10 000 reizes progammas atmiņā vai 100 000 EEPROM
+   EEPROM.put(0, parametri);  
+}
+
+// ===========================================================================  Parametri Beigas
+ 
+
+
+static bool measure_environment(float *temperature, float *humidity) {
+    static unsigned long measurement_timestamp = millis();
+
+    /* Measure once every four seconds. */
+    if (millis() - measurement_timestamp > 4000ul) {
+        if (dht_sensor.measure(temperature, humidity)) {
+            measurement_timestamp = millis();
+            return (true);
+        }
+    }
+
+    return (false);
+}
+
+
+
+    
+ int btnStateLast=0;  
+ unsigned long lastButtonPress = 0;
+
+
+ bool Enkoders () {
+  /*
+
+	// Read the current state of CLK
+	currentStateCLK = digitalRead(Enkoders_CLK);
+
+	// If last and current state of CLK are different, then pulse occurred
+	// React to only 1 state change to avoid double count
+	if (currentStateCLK != lastStateCLK  && currentStateCLK == 1){
+
+		// If the DT state is different than the CLK state then
+		// the encoder is rotating CCW so decrement
+		if (digitalRead(Enkoders_DT) != currentStateCLK) {
+			counter --;
+			currentDir ="CCW";
+		} else {
+			// Encoder is rotating CW so increment
+			counter ++;
+			currentDir ="CW";
+		}	 
+	}
+
+	// Remember last CLK state
+	lastStateCLK = currentStateCLK;
+*/
+	// Read the button state
+	int btnState = digitalRead(Enkoders_SW);
+
+	//If we detect LOW signal, button is pressed
+	if (btnState == LOW && btnStateLast != btnState) {
+		
+    
+    //if 50ms have passed since last LOW pulse, it means that the
+		//button has been pressed, released and pressed again
+		if (millis() - lastButtonPress > 50) {
+				lastButtonPress = millis();
+        btnStateLast=btnState;    
+        return true;
+		}
+
+		// Remember last button press event
+		lastButtonPress = millis();
+    btnStateLast=btnState;
+    return false;
+	}
+ btnStateLast=btnState;
+	// Put in a slight delay to help debounce the reading
+	delay(1);
+  return false;
+}
+
+void updateEncoder(){
+	// Read the current state of CLK
+	currentStateCLK = digitalRead(Enkoders_CLK);
+
+	// If last and current state of CLK are different, then pulse occurred
+	// React to only 1 state change to avoid double count
+	if (currentStateCLK != lastStateCLK  && currentStateCLK == 1){
+
+		// If the DT state is different than the CLK state then
+		// the encoder is rotating CCW so decrement
+		if (digitalRead(Enkoders_DT) != currentStateCLK) {
+			counter --;
+     // if(counter<0){
+      //  counter=0;
+      //}
+			currentDir ="CCW";
+		} else {
+			// Encoder is rotating CW so increment
+			counter ++;
+			currentDir ="CW";
+		} 
+
+	 
+	}
+
+	// Remember last CLK state
+	lastStateCLK = currentStateCLK;
+}
+
+
+/*********************************************************************************************************************************************************************************
+                                                                        SETUPS
+*********************************************************************************************************************************************************************************/
+
+void setup()
+{
+Serial.begin(9600);
+Serial.println("Hello World");
+
+    pinMode(Enkoders_SW,INPUT_PULLUP);
+    pinMode(Enkoders_DT,INPUT);
+    pinMode(Enkoders_CLK,INPUT);
+    lastStateCLK = digitalRead(Enkoders_CLK);
+    btnStateLast=digitalRead(Enkoders_SW);
+
+  // Call updateEncoder() when any high/low changed seen
+	// on interrupt 0 (pin 2), or interrupt 1 (pin 3)
+	attachInterrupt(0, updateEncoder, CHANGE);
+	attachInterrupt(1, updateEncoder, CHANGE);
+
+
+  lcd.init();                      // initialize the lcd 
+   fonaGaisma=0;
+  // Print a message to the LCD.
+  lcd.createChar(0,Simboli_Zivs);
+  lcd.createChar(1, Simboli_ee);
+  lcd.createChar(2, Simboli_Sh);
+  lcd.createChar(3, Simboli_CO2_2);
+  lcd.createChar(4, Simboli_Saulekts);
+  lcd.createChar(5, Simboli_Saule);
+  lcd.createChar(6, Simboli_Saulriets);
+  lcd.createChar(7, Simboli_Nakts);
+  
+
+  lcd.backlight();
+  lcd.setCursor(3,0);
+  lcd.print("Hello, world!");
+  lcd.setCursor(2,1);
+  lcd.print("Rukisi ir baigiee rakari");
+
+  pulkstenis.begin();       // initialize rtc
+ /*  Vienmreiz uzstāda un tad caur programmu 
+ pulkstenis.adjust(DateTime(2025,1,9,22,1,0)); 
+ */
+}
+
+/*********************************************************************************************************************************************************************************
+                                                                        Cikls
+*********************************************************************************************************************************************************************************/
+long displayTime_Apdeits=0;
+ void displayTime()
+ {
+  long mi=millis();
+  if(displayTime_Apdeits +1000>mi){
+    return;
+  }
+
+  lcd.setCursor(0,0);
+  lcd.print(now.year());
+  lcd.print('.');
+  lcd.print(now.month());
+  lcd.print('.');
+  lcd.print(now.day());
+  lcd.print(' ');
+  lcd.print(now.hour());
+  lcd.print(':');
+  lcd.print(now.minute());
+  lcd.print(':');
+  lcd.print(now.second());
+  lcd.print("    ");
+  displayTime_Apdeits=mi;
+ } 
+
+
+
+void loop()
+{
+  
+  delay(50);           //  5 sekundes
+   now = pulkstenis.now();
+    Ekrans();
+ if (Enkoders()){
+    Menu_OnClick();
+ }  
+
+  Serial.print("counter=");
+  Serial.println(counter);
+/*
+    lcd.setCursor(1,0);
+  //lcd.autoscroll();
+  lcd.write(byte(0));
+  lcd.write(byte(1));
+   lcd.write(byte(2));
+   lcd.print("CO");
+   lcd.write(byte(3));
+   lcd.write(byte(4));
+   lcd.write(byte(5));
+   lcd.write(byte(6));
+   lcd.write(byte(7));
+   lcd.setCursor(1,2);
+   lcd.setCursor(1,0);
+ // lcd.print("@ Hello, world!");
+  lcd.cursor();
+    lcd.blink();
+
+
+  if(fonaGaisma){
+      lcd.backlight();
+  } else {
+   //   lcd.noBacklight();
+  }
+  fonaGaisma=! fonaGaisma;
+*/
+}
