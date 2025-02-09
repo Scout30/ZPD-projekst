@@ -123,6 +123,9 @@ void Ekrans(){
     case CO2:
       Zime_CO2();
       break;
+    case Tempratura:
+      Zime_Temperaturu();
+      break;
 
     default:
       break;
@@ -574,6 +577,192 @@ if(aktivaisLogs==1){
   }
 }
 
+/********************************************** Temperatūra ******************************************************************/
+void  Temperatura_OnClick(){
+     //Serial.print("pozicija: ");  Serial.println(pozicija);
+   switch(pozicija){
+        case 0:  //Atgriežamies neko nesaglabājot
+          Menu_AktivaIzvelne=Galvena;        
+        
+          break;
+        case 1: 
+        
+       
+           if(laboPoziciju){
+              pozicija++; //Ejam tālāk labot minūtes
+            } else {
+              laboPoziciju=true;
+              lcd.blink();
+            }          
+            counter=0;          
+          break;
+        case 2: //Minuites        
+          laboPoziciju=!laboPoziciju;
+          counter=0;
+            if(laboPoziciju){
+              lcd.blink();
+            } else {
+              lcd.noBlink();
+            }
+          break;   
+        case 3: // Saglabā ja ir OK
+          laboPoziciju=false;
+          if( skaitlis1>=100 && skaitlis1<350 && 
+              skaitlis2>=5 && skaitlis2<=100 
+          ){     
+              float desmit=10.0;
+                if(
+                  parametri.Temp!=(skaitlis1/desmit) ||
+                  parametri.TempTrauksme!=(skaitlis2/desmit)
+                ) {
+                  //Sagalbā ja dati tiešam mainīti, jo ir ierobežots maksimālais ierastīšanas reižu saits
+                  parametri.Temp=skaitlis1/desmit;
+                  parametri.TempTrauksme=skaitlis2/desmit;
+                  param_Saglabat();
+                }
+              DatiSaglabatiVeiksmigi();
+          }
+          else {
+               NepareizasVertibas();
+                Zime_Temperaturu(); //Pārzīmē ekrānu
+          }        
+
+          break;
+         
+
+        default:
+          //Vērtība pāri robezām
+          pozicija=0;
+          laboPoziciju=false;
+          break;
+      }      
+}
+//bookmark2
+void  Zime_Temperaturu(){
+    if(Menu_IeprieksejaIzvelne!=Tempratura ){
+    
+            param_Nolasit();
+            /*float Temp=27;  
+  float TempTrauksme=4;*/
+            skaitlis1=parametri.Temp*10;
+            skaitlis2=parametri.TempTrauksme*10;
+
+        //Pārbauda vai zivīm temeratūra ir nomālā diapazonā
+       if(skaitlis1>350 ||skaitlis1<100 ){
+        skaitlis1 = 270;
+       }
+       if(skaitlis2>100 || skaitlis2<5){
+        skaitlis2 = 5;
+       }
+            
+            pozicija=0;
+            pozicijaVeca=0;
+            laboPoziciju=false;      
+       
+        Menu_IeprieksejaIzvelne=Tempratura;
+        counter=0;   
+        lcd.clear();
+      
+          skaitlis1Vecais=-500;
+      
+          lcd.setCursor(0,0);
+          lcd.write(byte(BultaAtpakal));
+          String ugarais=" Temperatura   ";
+          ugarais[9]=Garais_uu;          
+          lcd.print(ugarais);   
+
+          lcd.setCursor(15,0);
+          lcd.write(byte(Zivs));        
+
+        lcd.cursor(); 
+        lcd.noBlink();   
+            
+      }
+    if(pozicija>4 && pozicija<0){
+        pozicija=0;
+      }
+       
+    if(laboPoziciju && counter!=0){
+     
+        switch(pozicija){       
+          case 1: //Stundas
+            skaitlis1+=counter;
+            counter=0;
+            if(skaitlis1<100) {              
+              skaitlis1=100;
+            }
+            if(skaitlis1>350) {
+              skaitlis1=350;
+            }
+            break;
+          case 2://Minūtes
+            skaitlis2+=counter;
+            counter=0;
+            
+            if(skaitlis2< 5) {
+              skaitlis2=5;
+            }
+            if(skaitlis2>100) {
+              skaitlis2=100;
+            }
+            break;
+        
+          default:     
+            break;
+        }
+      
+
+    } else {
+      MainaKursoraPozicijuLoga(4);
+    
+    }
+ 
+
+if (
+      skaitlis1Vecais!=skaitlis1 || 
+      skaitlis2Vecais!=skaitlis2 ||      
+      pozicijaVeca!=pozicija  
+      ) {
+        //Zīmējam ja ir izmaiņas
+      skaitlis1Vecais=skaitlis1;
+      skaitlis2Vecais=skaitlis2; 
+      pozicijaVeca=pozicija;        
+
+          lcd.setCursor(0,1);
+          lcd.print("      +/-         ");
+        lcd.setCursor(1,1);
+        
+        lcd.print(skaitlis1/10);
+        lcd.print(".");
+        lcd.print(skaitlis1 % 10);
+        
+        lcd.setCursor(10,1);
+        
+        lcd.print(skaitlis2/10);
+       lcd.print(".");
+        lcd.print(skaitlis2 % 10);
+        
+        switch(pozicija){
+          case 0: 
+            lcd.setCursor(0,0);
+            break;
+          case 1:
+          lcd.setCursor(4,1);
+            break;
+          case 2:
+            lcd.setCursor(12,1);
+            break;
+          case 3:
+            lcd.setCursor(15,0);
+            break;  
+          
+          default:           
+            break;
+        }
+      } 
+ 
+  
+}
 
 /********************************************** CO2 ******************************************************************/
 void  CO2_OnClick(){
@@ -1338,6 +1527,9 @@ void Poga_OnClick(){
         return;
     case CO2:
       CO2_OnClick();
+      return;
+    case Tempratura:
+      Temperatura_OnClick();
       return;
     case Menu:
        switch (Menu_KursoraPozicija){
