@@ -4,6 +4,9 @@
 #include <LiquidCrystal_I2C.h>
 #include <RTClib.h>                 // for RTC
 #include "DHT_Async.h"
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
 #define  ParametruVersija  3
 
 #define DHT_SENSOR_TYPE DHT_TYPE_11
@@ -15,8 +18,14 @@
 #define BultaUzPrieksu 0x7E
 #define Kvadratsakne B11101000
 #define Garais_uu B11110101
-
 #define Zivs 0
+
+// DallasTemperature Datu vads - Arduino digitalais pins # 4
+#define DallasTemperatureSensors 4
+// Konfigurē viena vada interfeisu DallasTemperature instrumentiem
+OneWire oneWire(DallasTemperatureSensors);
+DallasTemperature sensors(&oneWire);
+
 
 static const int Enkoders_CLK = 2;
 static const int Enkoders_DT = 3;
@@ -1818,7 +1827,29 @@ void param_Saglabat(){
 
 // ===========================================================================  Parametri Beigas
  
+float temperature;
+float humidity; 
+float tempAkvarija;
 
+/*static bool NolasaApkartejoVidi( ) {
+   
+  return measure_environment(&temperature, &humidity);
+   static unsigned long measurement_timestamp = millis();
+    /* Measure once every four seconds. * /
+    if (millis() - measurement_timestamp > 4000ul) {
+        sensors.requestTemperatures();     
+        tempAkvarija=sensors.getTempCByIndex(0);        
+      
+        if (dht_sensor.measure(&temperature, &humidity)) {
+            measurement_timestamp = millis();
+            return (true);
+        }
+
+
+    }
+
+    return (false);
+}*/
 
 static bool measure_environment(float *temperature, float *humidity) {
     static unsigned long measurement_timestamp = millis();
@@ -1833,8 +1864,6 @@ static bool measure_environment(float *temperature, float *humidity) {
 
     return (false);
 }
-
-
 
     
  int btnStateLast=0;  
@@ -1944,13 +1973,16 @@ Serial.println("Hello World");
 lcd.setCursor(2,1);
 //EEPROM.get(0, parametri);
 param_Nolasit();
-
+ // DallasTemperature sensoru palaišana
+  sensors.begin();
+tempAkvarija=0;
 }
 
 /*********************************************************************************************************************************************************************************
                                                                         Cikls
 *********************************************************************************************************************************************************************************/
 long displayTime_Apdeits=0;
+
  void displayTime()
  {
   long mi=millis();
@@ -1972,13 +2004,38 @@ long displayTime_Apdeits=0;
   lcd.print(now.second());
   lcd.print("    ");
   displayTime_Apdeits=mi;
+  
  } 
 
 
 
 void loop()
 {
+
+  //NolasaApkartejoVidi(); 
+
+  float temperature1;
+    float humidity1;
+
+    /* Measure temperature and humidity.  If the functions returns
+       true, then a measurement is available. */
+    if (measure_environment(&temperature1, &humidity1)) {
+        Serial.print("T = ");
+        Serial.print(temperature1, 1);
+        Serial.print(" deg. C, H = ");
+        Serial.print(humidity1, 1);
+        Serial.println("%");
+    }
   
+ /* Serial.print("T akvārijā:");
+  Serial.print(tempAkvarija);
+  Serial.print(" T istabā:");
+
+Serial.print(temperature);
+  Serial.print(" Mitrums:");
+  
+Serial.println(humidity);
+*/
   delay(5);           //  5 sekundes
    now = pulkstenis.now();
     Ekrans();
