@@ -6,6 +6,7 @@
 #include "DHT_Async.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <Servo.h>
 
 #define  ParametruVersija  3
 
@@ -31,6 +32,14 @@ static const int Enkoders_CLK = 2;
 static const int Enkoders_DT = 3;
 static const int Enkoders_SW = 5;
 
+static const int RelejaPins_Gaisma1 = 6;
+static const int RelejaPins_Gaisma2 = 7;
+static const int RelejaPins_CO = 8;
+static const int RelejaPins_Silditajs = 9;
+
+static const int ServoPins = 12;
+
+
 //#define DHT_SENSOR_TYPE DHT_TYPE_21
 //#define DHT_SENSOR_TYPE DHT_TYPE_22
 
@@ -44,6 +53,8 @@ RTC_DS3231 pulkstenis;                     // create rtc for the DS3231 RTC modu
 int counter = 0;
 int currentStateCLK;
 int lastStateCLK;
+long barosanaOn = 0;
+Servo myservo;
 
 
 DateTime now;
@@ -1318,27 +1329,27 @@ void  DatumsUnLaiks_OnClick(){
 
 void  Zime_DatumsUnLaiks(){
     if(Menu_IeprieksejaIzvelne!=DatumsLaiks){
-        Menu_IeprieksejaIzvelne=DatumsLaiks;
-        counter=0;   
-        lcd.clear();
-        lcd.setCursor(0,0);
-        lcd.write(byte(BultaAtpakal));
-        lcd.print("Datums, laiks  ");         
-        lcd.setCursor(15,0);
-        lcd.write(byte(Zivs));
-         
-        skaitlis1=now.year();
-        skaitlis2=now.month();
-        skaitlis3=now.day();
-        skaitlis4=now.hour();
-        skaitlis5=now.minute();
-        skaitlis1Vecais=-500;
-        pozicija=0;
-        pozicijaVeca=0;
-        laboPoziciju=false;
+          Menu_IeprieksejaIzvelne=DatumsLaiks;
+          counter=0;   
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.write(byte(BultaAtpakal));
+          lcd.print("Datums, laiks  ");         
+          lcd.setCursor(15,0);
+          lcd.write(byte(Zivs));
+          
+          skaitlis1=now.year();
+          skaitlis2=now.month();
+          skaitlis3=now.day();
+          skaitlis4=now.hour();
+          skaitlis5=now.minute();
+          skaitlis1Vecais=-500;
+          pozicija=0;
+          pozicijaVeca=0;
+          laboPoziciju=false;
 
-        lcd.cursor(); 
-        lcd.noBlink();       
+          lcd.cursor(); 
+          lcd.noBlink();       
       }
       
     if(laboPoziciju && counter!=0){
@@ -1411,92 +1422,120 @@ void  Zime_DatumsUnLaiks(){
 
 
 
-if (
-    skaitlis1Vecais!=skaitlis1 || 
-    skaitlis2Vecais!=skaitlis2 ||
-    skaitlis3Vecais!=skaitlis3 ||
-    skaitlis4Vecais!=skaitlis4 ||
-    skaitlis5Vecais!=skaitlis5 ||
-    pozicijaVeca!=pozicija
-    ) {
-      //Zīmējam ja ir izmaiņas
+  if (
+      skaitlis1Vecais!=skaitlis1 || 
+      skaitlis2Vecais!=skaitlis2 ||
+      skaitlis3Vecais!=skaitlis3 ||
+      skaitlis4Vecais!=skaitlis4 ||
+      skaitlis5Vecais!=skaitlis5 ||
+      pozicijaVeca!=pozicija
+      ) {
+        //Zīmējam ja ir izmaiņas
 
-    skaitlis1Vecais=skaitlis1;
-    skaitlis2Vecais=skaitlis2;
-    skaitlis3Vecais=skaitlis3;
-    skaitlis4Vecais=skaitlis4;
-    skaitlis5Vecais=skaitlis5;
-    pozicijaVeca=pozicija;
+      skaitlis1Vecais=skaitlis1;
+      skaitlis2Vecais=skaitlis2;
+      skaitlis3Vecais=skaitlis3;
+      skaitlis4Vecais=skaitlis4;
+      skaitlis5Vecais=skaitlis5;
+      pozicijaVeca=pozicija;
 
-      lcd.setCursor(0,1);
-      lcd.print(skaitlis1);
-      lcd.print(".");
+        lcd.setCursor(0,1);
+        lcd.print(skaitlis1);
+        lcd.print(".");
 
-      if(skaitlis2>9){
-        lcd.print(skaitlis2);
-      } else {
-        lcd.print("0");
-        lcd.print(skaitlis2);
-      }
-      lcd.print(".");
+        if(skaitlis2>9){
+          lcd.print(skaitlis2);
+        } else {
+          lcd.print("0");
+          lcd.print(skaitlis2);
+        }
+        lcd.print(".");
 
-      if(skaitlis3>9){
-        lcd.print(skaitlis3);
-      } else {
-        lcd.print("0");
-        lcd.print(skaitlis3);
-      }
-      lcd.print(" ");
+        if(skaitlis3>9){
+          lcd.print(skaitlis3);
+        } else {
+          lcd.print("0");
+          lcd.print(skaitlis3);
+        }
+        lcd.print(" ");
 
-      if(skaitlis4>9){
-        lcd.print(skaitlis4);
-      } else {
-        lcd.print("0");
-        lcd.print(skaitlis4);
-      }
-      lcd.print(":");
+        if(skaitlis4>9){
+          lcd.print(skaitlis4);
+        } else {
+          lcd.print("0");
+          lcd.print(skaitlis4);
+        }
+        lcd.print(":");
 
-      if(skaitlis5>9){
-        lcd.print(skaitlis5);
-      } else {
-        lcd.print("0");
-        lcd.print(skaitlis5);
-      }
-      
-      
-      
-      switch(pozicija){
-        case 0: 
-          lcd.setCursor(0,0);
-          break;
-        case 1:
-         lcd.setCursor(3,1);
-          break;
-        case 2:
-          lcd.setCursor(6,1);
-          break;
-        case 3:
-          lcd.setCursor(9,1);
-          break;
-        case 4:
-          lcd.setCursor(12,1);
-          break;
-        case 5:
-          lcd.setCursor(15,1);
-          break;
-        case 6:
-          lcd.setCursor(15,0);
-          break;      
+        if(skaitlis5>9){
+          lcd.print(skaitlis5);
+        } else {
+          lcd.print("0");
+          lcd.print(skaitlis5);
+        }
+        
+        
+        
+        switch(pozicija){
+          case 0: 
+            lcd.setCursor(0,0);
+            break;
+          case 1:
+          lcd.setCursor(3,1);
+            break;
+          case 2:
+            lcd.setCursor(6,1);
+            break;
+          case 3:
+            lcd.setCursor(9,1);
+            break;
+          case 4:
+            lcd.setCursor(12,1);
+            break;
+          case 5:
+            lcd.setCursor(15,1);
+            break;
+          case 6:
+            lcd.setCursor(15,0);
+            break;      
 
-        default:
-          //Vērtība pāri robezām
-          pozicija=0;
-          break;
-      }
-    } 
+          default:
+            //Vērtība pāri robezām
+            pozicija=0;
+            break;
+        }
+      } 
 
-}
+    }
 
+
+
+long displayTime_Apdeits=0;
+
+ void displayTime()
+  {
+  long mi=millis();
+  if(displayTime_Apdeits +1000>mi){
+    return;
+  }
+
+  lcd.setCursor(0,0);
+  lcd.print(now.year()-2000);
+  lcd.print('.');
+  lcd.print(now.month());
+  lcd.print('.');
+  lcd.print(now.day());
+  lcd.print(' ');
+  lcd.print(now.hour());
+  lcd.print(':');
+  lcd.print(now.minute());
+  lcd.print(':');
+  lcd.print(now.second());
+  lcd.print("    ");
+  displayTime_Apdeits=mi;
+  
+ } 
+ 
 void  ZimePamatlogu(){
   if(Menu_AktivaIzvelne!=Menu_IeprieksejaIzvelne){
     Menu_IeprieksejaIzvelne=Menu_AktivaIzvelne;
@@ -1687,29 +1726,6 @@ void  ZimeMenu(){
  
    Serial.print("ZimeMenu_Nobide=");
   Serial.println(ZimeMenu_Nobide);
-  
- 
-
-
-
-/*
-  //lcd.autoscroll();
-  lcd.write(byte(0));
-  lcd.write(byte(1));
-   lcd.write(byte(2));
-   lcd.print("CO");
-   lcd.write(byte(3));
-   lcd.write(byte(4));
-   lcd.write(byte(5));
-   lcd.write(byte(6));
-   lcd.write(byte(7));
-   lcd.setCursor(1,2);
-   lcd.setCursor(1,0);
- // lcd.print("@ Hello, world!");
-  
-    lcd.blink();
-*/
-  
 }
 
 
@@ -1830,6 +1846,7 @@ void param_Saglabat(){
 float temperature;
 float humidity; 
 float tempAkvarija;
+bool tempTrauksme=false;
 
 /*static bool NolasaApkartejoVidi( ) {
    
@@ -1898,7 +1915,8 @@ static bool measure_environment(float *temperature, float *humidity) {
   return false;
 }
 
-void updateEncoder(){
+void updateEncoder()
+{
 	// Read the current state of CLK
 	currentStateCLK = digitalRead(Enkoders_CLK);
 
@@ -1926,6 +1944,152 @@ void updateEncoder(){
 }
 
 
+void SakaBrot() 
+{
+  if(barosanaOn = 0){
+    barosanaOn = millis();
+  }
+}
+
+
+/*********************************************************************************************************************************************************************************
+                                                                        Barosana
+*********************************************************************************************************************************************************************************/
+
+
+static const long BarosanasCiklaIlgums = 50; //decimalsekundes
+
+void BarosanasVeiksana()
+{
+  if(barosanaOn = 0){
+    return;
+  }
+  long t1 = millis() - barosanaOn;
+  long x = t1 / BarosanasCiklaIlgums;
+  if(x <= 100) {
+    myservo.write(x);
+  }
+  else {
+    if (x <= 200){
+    x = 200 - x; //atpakaļ ceļš
+    myservo.write(x);
+    }
+    else {
+      barosanaOn = 0; //barošana beidzas
+      myservo.write(0);
+    }
+  }
+}
+
+/*********************************************************************************************************************************************************************************
+                                                                        DarbibuIeslegsana
+*********************************************************************************************************************************************************************************/
+
+int pedejaBarosana = 0;
+
+void DarbibuIeslegsana() 
+{
+
+    now = pulkstenis.now();
+    int minutesNoDienasSakuma = now.hour()*60+now.minute();
+    //pārbauda vai jābaro
+     if (pedejaBarosana != now.day()) {
+          //" P O T C P S Sv 
+          uint8_t nedelasDiena=now.dayOfTheWeek()-1;
+          if(nedelasDiena=0){
+            //Angļu svētdiena
+            nedelasDiena=6;
+          } else {
+            nedelasDiena--;        
+          }                   
+          uint8_t ndParbauditajs=1;
+          for(uint8_t nd=0; nd<7; nd++)
+          {         
+              uint8_t rez=BaroNedelasDienas & ndParbauditajs;
+              if(rez!=0  && nd==nedelasDiena) {
+                if( parametri.Barosana_Stundas*60 +  parametri.Barosana_Minutes< minutesNoDienasSakuma ){
+                    SakaBrot();
+                    pedejaBarosana = now.day();
+                  }
+              } 
+              ndParbauditajs=ndParbauditajs*2;          
+          } 
+    }
+
+    //giasma
+    bool mazaGaisma = false;
+    bool lielaGaisma = false;
+
+
+    if( parametri.Saullekts_Stundas*60 +  parametri.Saullekts_Minutes< minutesNoDienasSakuma ){  
+      mazaGaisma=true;
+    }
+
+    if( parametri.Diena_Stundas*60 +  parametri.Diena_Minutes< minutesNoDienasSakuma ){
+      lielaGaisma=true;
+    }
+
+    if( parametri.Saulriets_Stundas*60 +  parametri.Saulriets_Minutes< minutesNoDienasSakuma ){
+      lielaGaisma=false;
+    }
+
+    if( parametri.Nakts_Stundas*60 +  parametri.Nakts_Minutes< minutesNoDienasSakuma ){
+      mazaGaisma=false;
+    }
+
+    if( mazaGaisma){
+      digitalWrite(RelejaPins_Gaisma1, HIGH);
+    } else {
+      digitalWrite(RelejaPins_Gaisma1, LOW);
+    }
+
+    if( lielaGaisma){
+      digitalWrite(RelejaPins_Gaisma2, HIGH);
+    } else {
+      digitalWrite(RelejaPins_Gaisma2, LOW);
+    }
+    
+    //CO2
+    bool co2 = false;
+    if(parametri.CO2Izmatosana){
+        if( parametri.CO2On_Stundas*60 +  parametri.CO2On_Minutes< minutesNoDienasSakuma ){
+          co2=true;
+        }
+
+        if( parametri.CO2Off_Stundas*60 +  parametri.CO2Off_Minutes< minutesNoDienasSakuma ){
+          co2=false;
+        }
+    }
+    if( co2){
+      digitalWrite(RelejaPins_CO, HIGH);
+    } else {
+      digitalWrite(RelejaPins_CO, LOW);
+    }
+
+
+    //Temperatura 
+
+    if(tempAkvarija< parametri.Temp +parametri.TempTrauksme-2){
+      digitalWrite(RelejaPins_Silditajs, HIGH);
+    } 
+    if(tempAkvarija> parametri.Temp +parametri.TempTrauksme){ {
+      digitalWrite(RelejaPins_Silditajs, LOW);
+    }
+
+    if(
+      tempAkvarija< parametri.Temp - parametri.TempTrauksme
+      ||
+      tempAkvarija> parametri.Temp + parametri.TempTrauksme
+      ){
+        tempTrauksme=true;
+      }  else 
+      {
+        tempTrauksme=false;
+      }
+
+  }
+
+}
 /*********************************************************************************************************************************************************************************
                                                                         SETUPS
 *********************************************************************************************************************************************************************************/
@@ -1938,6 +2102,12 @@ Serial.println("Hello World");
     pinMode(Enkoders_SW,INPUT_PULLUP);
     pinMode(Enkoders_DT,INPUT);
     pinMode(Enkoders_CLK,INPUT);
+    
+    pinMode(RelejaPins_Gaisma1,OUTPUT);
+    pinMode(RelejaPins_Gaisma2,OUTPUT);
+    pinMode(RelejaPins_CO,OUTPUT);
+    pinMode(RelejaPins_Silditajs,OUTPUT);
+  
     lastStateCLK = digitalRead(Enkoders_CLK);
     btnStateLast=digitalRead(Enkoders_SW);
 
@@ -1974,38 +2144,17 @@ lcd.setCursor(2,1);
 //EEPROM.get(0, parametri);
 param_Nolasit();
  // DallasTemperature sensoru palaišana
-  sensors.begin();
+sensors.begin();
+
+myservo.attach(ServoPins);
+
 tempAkvarija=0;
 }
 
 /*********************************************************************************************************************************************************************************
                                                                         Cikls
 *********************************************************************************************************************************************************************************/
-long displayTime_Apdeits=0;
 
- void displayTime()
- {
-  long mi=millis();
-  if(displayTime_Apdeits +1000>mi){
-    return;
-  }
-
-  lcd.setCursor(0,0);
-  lcd.print(now.year()-2000);
-  lcd.print('.');
-  lcd.print(now.month());
-  lcd.print('.');
-  lcd.print(now.day());
-  lcd.print(' ');
-  lcd.print(now.hour());
-  lcd.print(':');
-  lcd.print(now.minute());
-  lcd.print(':');
-  lcd.print(now.second());
-  lcd.print("    ");
-  displayTime_Apdeits=mi;
-  
- } 
 
 
 
@@ -2037,11 +2186,14 @@ Serial.print(temperature);
 Serial.println(humidity);
 */
   delay(5);           //  5 sekundes
-   now = pulkstenis.now();
-    Ekrans();
+ //  now = pulkstenis.now();
+
+DarbibuIeslegsana();
+Ekrans();
  if (Enkoders()){
     Poga_OnClick();
  }  
+BarosanasVeiksana();
 
  // Serial.print("counter=");
  // Serial.println(counter);
