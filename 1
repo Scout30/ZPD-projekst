@@ -54,6 +54,22 @@ int counter = 0;
 int currentStateCLK;
 int lastStateCLK;
 long barosanaOn = 0;
+
+float temperature;
+float humidity; 
+float tempAkvarija;
+bool tempTrauksme=false;
+float temperaturaIstaba=0;
+float mitrumsIstaba=0;
+int pedejaBarosana = 0;
+bool co2 = false;
+int dienaaktsDala=0;
+bool silditajs=false;
+unsigned long gaismaEkranam=0;
+bool fonaGaisma=0;
+bool fonaGaismaUzstaditaVertiba=false;
+bool trauksme=0;
+
 Servo myservo;
 
 
@@ -1510,15 +1526,34 @@ void  Zime_DatumsUnLaiks(){
 
 
 
-long displayTime_Apdeits=0;
+ unsigned long displayTime_Apdeits=0;
 
- void displayTime()
-  {
-  long mi=millis();
-  if(displayTime_Apdeits +1000>mi){
+ 
+
+void  ZimePamatlogu(){
+  if(Menu_AktivaIzvelne!=Menu_IeprieksejaIzvelne){
+    Menu_IeprieksejaIzvelne=Menu_AktivaIzvelne;
+    counter=0;   
+    lcd.clear();
+    lcd.noCursor();
+    lcd.noBlink();
+   }
+
+ unsigned long  mi=millis();
+  if(displayTime_Apdeits +500>mi){
     return;
   }
+  displayTime_Apdeits=mi;  
 
+// Fona gaismas uztādīšana
+if(gaismaEkranam> mi || tempTrauksme){
+  //Nav pienāci laiks aptumšot ekrānu vai trauksme
+  fonaGaisma=true;
+  } else {
+    fonaGaisma=false;
+  }
+
+  //Zīmē laiku
   lcd.setCursor(0,0);
   lcd.print(now.year()-2000);
   lcd.print('.');
@@ -1531,22 +1566,58 @@ long displayTime_Apdeits=0;
   lcd.print(now.minute());
   lcd.print(':');
   lcd.print(now.second());
-  lcd.print("    ");
-  displayTime_Apdeits=mi;
+  lcd.print("    ");  
+
+  //Attēlo vides parametrus
+  lcd.setCursor(0,1);
+
   
- } 
- 
-void  ZimePamatlogu(){
-  if(Menu_AktivaIzvelne!=Menu_IeprieksejaIzvelne){
-    Menu_IeprieksejaIzvelne=Menu_AktivaIzvelne;
-    counter=0;   
-    lcd.clear();
-    lcd.noCursor();
-    lcd.noBlink();
-   }
-  displayTime();
+
+  if( ((now.second()/10)%2==0) || tempTrauksme ){
+  // katras 10 sekundes daījums būs pāra skaitlis
+      lcd.print("T=");
+      lcd.print(tempAkvarija, 1);
+      lcd.print("C            ");
+     
+    if (pedejaBarosana == now.day()){
+       lcd.setCursor(7,1);
+       lcd.write(byte(Zivs));   //Akvarija T
+    }
+
+      if(co2){
+        lcd.setCursor(9,1);
+        lcd.print("CO");
+        lcd.write(byte(3));   //Simboli_CO2_2
+      }
+
+      lcd.setCursor(13,1);
+      switch(dienaaktsDala){
+        case 0:
+        case 4:
+         lcd.write(byte(7));   //Simboli_Nakts
+         return;
+        case 1://Rīts
+         lcd.write(byte(4));   //Simboli_Saulekts
+         return;
+        case 2://Diena
+         lcd.write(byte(5));   //Simboli_Saule
+         return;
+        case 3://Vakars
+         lcd.write(byte(6));   //Simboli_Saulriets
+         return;
+      } 
+
+  } else {
+        lcd.print("T");
+        lcd.write(byte(3));   //Simboli_CO2_2
+        lcd.print("=");
+        lcd.print(temperaturaIstaba, 1);
+        lcd.print("C, H=");
+        lcd.print(mitrumsIstaba, 1);
+        lcd.println("%   ");
+  } 
+
 }
-long gaismaEkranam=0;
 
 void Poga_OnClick(){
   gaismaEkranam= millis() + 60*1000; //Iesledzam gaismu uz 60 sekundēm
@@ -1730,7 +1801,6 @@ void  ZimeMenu(){
 
 
 
-bool fonaGaisma=0;
 
 
 uint8_t Simboli_Zivs[8]  = {0x0,0x8,0x16,0x1f,0x16,0x4,0x0};
@@ -1843,10 +1913,7 @@ void param_Saglabat(){
 
 // ===========================================================================  Parametri Beigas
  
-float temperature;
-float humidity; 
-float tempAkvarija;
-bool tempTrauksme=false;
+
 
 /*static bool NolasaApkartejoVidi( ) {
    
@@ -1873,6 +1940,10 @@ static bool measure_environment(float *temperature, float *humidity) {
 
     /* Measure once every four seconds. */
     if (millis() - measurement_timestamp > 4000ul) {
+   
+        
+
+        // mēra ārējas vides datus
         if (dht_sensor.measure(temperature, humidity)) {
             measurement_timestamp = millis();
             return (true);
@@ -1985,7 +2056,7 @@ void BarosanasVeiksana()
                                                                         DarbibuIeslegsana
 *********************************************************************************************************************************************************************************/
 
-int pedejaBarosana = 0;
+
 
 void DarbibuIeslegsana() 
 {
@@ -2019,22 +2090,26 @@ void DarbibuIeslegsana()
     //giasma
     bool mazaGaisma = false;
     bool lielaGaisma = false;
-
+    dienaaktsDala=0;
 
     if( parametri.Saullekts_Stundas*60 +  parametri.Saullekts_Minutes< minutesNoDienasSakuma ){  
       mazaGaisma=true;
+      dienaaktsDala++;
     }
 
     if( parametri.Diena_Stundas*60 +  parametri.Diena_Minutes< minutesNoDienasSakuma ){
       lielaGaisma=true;
+      dienaaktsDala++;
     }
 
     if( parametri.Saulriets_Stundas*60 +  parametri.Saulriets_Minutes< minutesNoDienasSakuma ){
       lielaGaisma=false;
+      dienaaktsDala++;
     }
 
     if( parametri.Nakts_Stundas*60 +  parametri.Nakts_Minutes< minutesNoDienasSakuma ){
       mazaGaisma=false;
+      dienaaktsDala=0;
     }
 
     if( mazaGaisma){
@@ -2050,7 +2125,7 @@ void DarbibuIeslegsana()
     }
     
     //CO2
-    bool co2 = false;
+    co2=false;
     if(parametri.CO2Izmatosana){
         if( parametri.CO2On_Stundas*60 +  parametri.CO2On_Minutes< minutesNoDienasSakuma ){
           co2=true;
@@ -2071,9 +2146,11 @@ void DarbibuIeslegsana()
 
     if(tempAkvarija< parametri.Temp +parametri.TempTrauksme-2){
       digitalWrite(RelejaPins_Silditajs, HIGH);
+      silditajs=true;
     } 
     if(tempAkvarija> parametri.Temp +parametri.TempTrauksme){ {
       digitalWrite(RelejaPins_Silditajs, LOW);
+      silditajs=false;
     }
 
     if(
@@ -2107,6 +2184,11 @@ Serial.println("Hello World");
     pinMode(RelejaPins_Gaisma2,OUTPUT);
     pinMode(RelejaPins_CO,OUTPUT);
     pinMode(RelejaPins_Silditajs,OUTPUT);
+digitalWrite(RelejaPins_Gaisma1, LOW);
+digitalWrite(RelejaPins_Gaisma2, LOW);
+digitalWrite(RelejaPins_CO, LOW);
+digitalWrite(RelejaPins_Silditajs, LOW);
+
   
     lastStateCLK = digitalRead(Enkoders_CLK);
     btnStateLast=digitalRead(Enkoders_SW);
@@ -2118,11 +2200,13 @@ Serial.println("Hello World");
 
 
   lcd.init();                      // initialize the lcd 
-   fonaGaisma=0;
+   fonaGaisma=false;
+   fonaGaismaUzstaditaVertiba=true;
   // Print a message to the LCD.
   lcd.createChar(Zivs,Simboli_Zivs);
   lcd.createChar(GaraisMazais_ee, Simboli_ee);
   lcd.createChar(Latviesu_sh, Simboli_Sh);
+
   lcd.createChar(3, Simboli_CO2_2);
   lcd.createChar(4, Simboli_Saulekts);
   lcd.createChar(5, Simboli_Saule);
@@ -2156,44 +2240,56 @@ tempAkvarija=0;
 *********************************************************************************************************************************************************************************/
 
 
-
-
 void loop()
 {
+
+  
+
 
   //NolasaApkartejoVidi(); 
 
   float temperature1;
-    float humidity1;
+  float humidity1;
 
-    /* Measure temperature and humidity.  If the functions returns
-       true, then a measurement is available. */
-    if (measure_environment(&temperature1, &humidity1)) {
-        Serial.print("T = ");
-        Serial.print(temperature1, 1);
-        Serial.print(" deg. C, H = ");
-        Serial.print(humidity1, 1);
-        Serial.println("%");
+  /*  if (measure_environment(&temperature1, &humidity1)) {
+        temperaturaIstaba=temperature1;
+        mitrumsIstaba=humidity1;
     }
+    */
+  //Mēra temp akvārijā
+        sensors.requestTemperatures();     
+        tempAkvarija=sensors.getTempCByIndex(0);   
   
- /* Serial.print("T akvārijā:");
-  Serial.print(tempAkvarija);
-  Serial.print(" T istabā:");
-
-Serial.print(temperature);
+  Serial.print("T akvārijā:");
+  Serial.println(tempAkvarija);
+ 
+/*erial.print(temperature);
   Serial.print(" Mitrums:");
   
 Serial.println(humidity);
 */
-  delay(5);           //  5 sekundes
- //  now = pulkstenis.now();
+  delay(50);           //  5 sekundes
+   now = pulkstenis.now();
 
 DarbibuIeslegsana();
 Ekrans();
  if (Enkoders()){
     Poga_OnClick();
  }  
-BarosanasVeiksana();
+//BarosanasVeiksana();
+
+
+/*
+if(fonaGaismaUzstaditaVertiba!=fonaGaisma){
+ //Maina fona gaismu, ja tā nav uztādīta atbilstoši vajadzībai
+  if(fonaGaisma){
+      lcd.backlight();
+  } else {
+     // lcd.noBacklight();
+  }
+  fonaGaismaUzstaditaVertiba=fonaGaisma;
+}
+*/
 
  // Serial.print("counter=");
  // Serial.println(counter);
@@ -2219,11 +2315,7 @@ BarosanasVeiksana();
     lcd.blink();
 
 
-  if(fonaGaisma){
-      lcd.backlight();
-  } else {
-   //   lcd.noBacklight();
-  }
+  
   fonaGaisma=! fonaGaisma;
 */
 }
