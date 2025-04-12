@@ -3,14 +3,21 @@
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
 #include <RTClib.h>                 // for RTC
-#include "DHT_Async.h"
+//#include "DHT_Async.h"
+
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
+
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <Servo.h>
 
 #define  ParametruVersija  3
 
-#define DHT_SENSOR_TYPE DHT_TYPE_11
+//#define DHT_SENSOR_TYPE DHT_TYPE_11
+#define DHTTYPE    DHT11     // DHT 11
+
 #define GaraisMazais_ee 1
 #define GaraisMazais_aa B11100001
 #define Latviesu_sh 2
@@ -20,6 +27,7 @@
 #define Kvadratsakne B11101000
 #define Garais_uu B11110101
 #define Zivs 0
+#define Garais_aa B11100001
 
 // DallasTemperature Datu vads - Arduino digitalais pins # 4
 #define DallasTemperatureSensors 4
@@ -43,8 +51,10 @@ static const int ServoPins = 12;
 //#define DHT_SENSOR_TYPE DHT_TYPE_21
 //#define DHT_SENSOR_TYPE DHT_TYPE_22
 
-static const int DHT_SENSOR_PIN = 10;
-DHT_Async dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
+static const int DHT_SENSOR_PIN = 11;// uz 10 nestradā
+//DHT_Async dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
+
+DHT_Unified dht(DHT_SENSOR_PIN, DHTTYPE);
 
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 RTC_DS3231 pulkstenis;                     // create rtc for the DS3231 RTC module, address is fixed at 0x68
@@ -72,7 +82,7 @@ bool trauksme=0;
 
 Servo myservo;
 
-
+DateTime PedejasBarosanasDatums;
 DateTime now;
 
 
@@ -118,9 +128,10 @@ enum Menu_Izvelnes{
   Nakts=50,
   CO2=60,
   Tempratura=70,
-  Barosana=80
+  Barosana=80,
+  SaktBarot=90
 };
-#define  ZimejamieMenuci 9
+#define  ZimejamieMenuci 10
 
 Menu_Izvelnes Menu_AktivaIzvelne=Galvena;
 Menu_Izvelnes Menu_IeprieksejaIzvelne=-1;
@@ -156,6 +167,9 @@ void Ekrans(){
     case Barosana:
       Zime_Barosana();
       break;
+    case SaktBarot:
+      Zime_SaktBarot();
+      break;  
     case CO2:
       Zime_CO2();
       break;
@@ -353,7 +367,144 @@ if (
 
 }
 
+/******************************************* Sakt barot *****************************************************/
+bool zimeBarotKeksi;
+bool zimeBarotKeksiVec;
+void  SaktBarot_OnClick(){
+    uint8_t bitsDienasMainai=0;
+   switch(pozicija){
+        case 0:  //Atgriežamies neko nesaglabājot
+          Menu_AktivaIzvelne=Galvena;
+          break;
+        case 1: //Ķeksis         
+          //Maina ķekša vērtību uz pretējo
+         zimeBarotKeksi=!zimeBarotKeksi;     
+          break;
+           
+          
+        case 2: // Saglabā ja ir OK
+          laboPoziciju=false;
+          if( zimeBarotKeksi ){            
+              SaktBarotFunkcija();
+              //DatiSaglabatiVeiksmigi();
+               Menu_AktivaIzvelne=Galvena;
+          }
+          else {
+             
+               Menu_AktivaIzvelne=Galvena;
+          }        
 
+          break;
+         
+
+        default:
+          //Vērtība pāri robezām
+          pozicija=0;
+          laboPoziciju=false;
+          break;
+      }
+ 
+}
+
+ String   MenesuSaisinajumi[12]={
+      ".Jan ",
+      ".Feb ",
+      ".Mar ", 
+      ".Apr ", 
+      ".Maj ",  
+      ".Jun ", 
+      ".Jul ",
+      ".Aug ",
+      ".Sep ",
+      ".Okt ",
+      ".Nov ",
+      ".Dec "} ; 
+
+void  Zime_SaktBarot(){
+    if(Menu_IeprieksejaIzvelne!=SaktBarot || aktivaisLogs!=aktivaisLogsVec){
+        if(Menu_IeprieksejaIzvelne!=SaktBarot){
+   
+            pozicija=0;
+            pozicijaVeca=0;
+            laboPoziciju=false;   
+            zimeBarotKeksi = false;
+            zimeBarotKeksiVec = true;     
+        }
+       
+        Menu_IeprieksejaIzvelne=SaktBarot;
+   
+        counter=0;   
+ 
+        lcd.cursor(); 
+        lcd.noBlink();   
+
+          lcd.setCursor(0,0);
+          lcd.write(byte(BultaAtpakal));
+          
+          if(PedejasBarosanasDatums.year()<=2000){
+            lcd.print(" Nav barots!         ");  
+          } else {
+            lcd.print(" ");  
+            lcd.print(PedejasBarosanasDatums.day());
+            lcd.print(MenesuSaisinajumi[PedejasBarosanasDatums.month()-1]);
+            
+            if(PedejasBarosanasDatums.hour()<10){
+              lcd.print("0");
+            }
+            lcd.print(PedejasBarosanasDatums.hour());
+            if(PedejasBarosanasDatums.minute()<10){
+              lcd.print(":0");
+            } else {
+              lcd.print(":");
+            }
+            lcd.print(PedejasBarosanasDatums.minute());            
+            lcd.print("     ");  
+          }
+          lcd.setCursor(0,1);
+          lcd.print("Sakt barot [ ]      ");  
+          lcd.setCursor(1,1);          
+          lcd.write(byte(Garais_aa));     
+          lcd.setCursor(15,1);
+          lcd.write(byte(Zivs));
+      }  
+       
+ 
+      MainaKursoraPozicijuLoga(2);
+ 
+  if (     
+      pozicijaVeca!=pozicija ||
+       zimeBarotKeksi !=  zimeBarotKeksiVec 
+      ) {
+        //Zīmējam ja ir izmaiņas      
+         pozicijaVeca=pozicija;
+        zimeBarotKeksiVec =  zimeBarotKeksi;
+
+        if(zimeBarotKeksi){        
+              lcd.setCursor(12,1);        
+              lcd.write(byte(Kvadratsakne));
+            } else {
+              lcd.setCursor(12,1);
+              lcd.print(" ");
+            }
+
+        switch(pozicija){
+          case 0: 
+            lcd.setCursor(0,0);
+            break;
+          case 1:
+          lcd.setCursor(12,1);        
+            break;
+          case 2:
+            lcd.setCursor(15,1);
+            break;         
+
+          default:                       
+            break;
+        }
+      } 
+
+   
+}
 
 /********************************************** Barošana ******************************************************************/
 void  Barosana_OnClick(){
@@ -1554,18 +1705,43 @@ if(gaismaEkranam> mi || tempTrauksme){
   }
 
   //Zīmē laiku
+  uint16_t gads=now.year()-2000;
+  uint8_t menesis=now.month();
+  uint8_t diena=now.day();
+  uint8_t stundas=now.hour();
+  uint8_t minutes=now.minute();
+  uint8_t sekundes=now.second(); 
+
+//Izdrukā datumu un laiku, pieliekot 0 priekšā, ja skaitlis ir viencipara
   lcd.setCursor(0,0);
-  lcd.print(now.year()-2000);
+  lcd.print(gads);
   lcd.print('.');
-  lcd.print(now.month());
+  /*
+  Jāietaupa 1 simbola vieta
+  if(menesis<10){
+    lcd.print("0");  
+  }*/
+  lcd.print(menesis);
   lcd.print('.');
-  lcd.print(now.day());
+  if(diena<10){
+    lcd.print("0"); 
+  }
+  lcd.print(diena);
   lcd.print(' ');
-  lcd.print(now.hour());
+  if(stundas<10){
+    lcd.print("0"); 
+  }
+  lcd.print(stundas);
   lcd.print(':');
-  lcd.print(now.minute());
+  if(minutes<10){
+    lcd.print("0"); 
+  }
+  lcd.print(minutes);
   lcd.print(':');
-  lcd.print(now.second());
+  if(sekundes<10){
+    lcd.print("0"); 
+  }
+  lcd.print(sekundes);
   lcd.print("    ");  
 
   //Attēlo vides parametrus
@@ -1573,7 +1749,7 @@ if(gaismaEkranam> mi || tempTrauksme){
 
   
 
-  if( ((now.second()/10)%2==0) || tempTrauksme ){
+  if( ((sekundes/10)%2==0) || tempTrauksme  || temperaturaIstaba==0 /*THC sensors nedarbojas*/){
   // katras 10 sekundes daījums būs pāra skaitlis
       lcd.print("T=");
       lcd.print(tempAkvarija, 1);
@@ -1644,6 +1820,9 @@ void Poga_OnClick(){
     case Barosana:
        Barosana_OnClick();
         return;
+    case  SaktBarot:
+        SaktBarot_OnClick();
+        return;
     case CO2:
       CO2_OnClick();
       return;
@@ -1653,7 +1832,7 @@ void Poga_OnClick(){
     case Menu:
        switch (Menu_KursoraPozicija){
           case 0:
-          case 9:
+          case 10:
             Menu_AktivaIzvelne=Galvena;
             return;
           case 1:
@@ -1680,6 +1859,9 @@ void Poga_OnClick(){
           case 8:
             Menu_AktivaIzvelne=Barosana;
             return;
+          case 9:
+            Menu_AktivaIzvelne=SaktBarot;
+            return;
           
         default:
           Menu_AktivaIzvelne=Galvena;
@@ -1698,7 +1880,7 @@ void Poga_OnClick(){
 int ZimeMenu_Nobide;
 int ZimeMenu_VecaisLogs;
 int ZimeMenu_NobideVeca;
- String   menuPunkti[10]={
+ String   menuPunkti[11]={
       "<--Atgriesties  ",
       "Datums un laiks ",
       "Saullekts       ", 
@@ -1708,6 +1890,7 @@ int ZimeMenu_NobideVeca;
       "CO2             ",
       "Temperatura     ",
       "Barosana        ",
+      "Sakt barot      ",
       "<--Atgriesties  "} ; 
 void ZimeMenuArGarumzimem(int rinda, int menuPunkts){
     lcd.setCursor(0,rinda);
@@ -1727,6 +1910,10 @@ void ZimeMenuArGarumzimem(int rinda, int menuPunkts){
           case 8://Barosana
              lcd.setCursor(4,rinda);
              lcd.write(byte(Latviesu_sh));
+            return;        
+          case 9://Sākt barot 
+             lcd.setCursor(1,rinda);
+             lcd.write(byte(Garais_aa));
             return;          
           
         default:        
@@ -1934,17 +2121,19 @@ void param_Saglabat(){
 
     return (false);
 }*/
-
+/*
+Nestrādā - uzkaras arduino, ja ir daudz koda
 static bool measure_environment(float *temperature, float *humidity) {
     static unsigned long measurement_timestamp = millis();
 
-    /* Measure once every four seconds. */
-    if (millis() - measurement_timestamp > 4000ul) {
-   
-        
+    /* Measure once every four seconds. * /
+    if (millis() - measurement_timestamp > 8000ul) {
+    
 
         // mēra ārējas vides datus
-        if (dht_sensor.measure(temperature, humidity)) {
+        if (
+          dht_sensor.measure(temperature, humidity)
+          ) {
             measurement_timestamp = millis();
             return (true);
         }
@@ -1952,7 +2141,93 @@ static bool measure_environment(float *temperature, float *humidity) {
 
     return (false);
 }
+*/
 
+/*
+DHT sensora inicialzēšana lai notestētu tā darebību
+
+uint32_t delayMS;
+void DHT_setup() {
+ // Serial.begin(9600);
+  // Initialize device.
+  dht.begin();
+  Serial.println(F("DHTxx Unified Sensor Example"));
+  // Print temperature sensor details.
+  sensor_t sensor;
+  dht.temperature().getSensor(&sensor);
+  Serial.println(F("------------------------------------"));
+  Serial.println(F("Temperature Sensor"));
+  Serial.print  (F("Sensor Type: ")); Serial.println(sensor.name);
+  Serial.print  (F("Driver Ver:  ")); Serial.println(sensor.version);
+  Serial.print  (F("Unique ID:   ")); Serial.println(sensor.sensor_id);
+  Serial.print  (F("Max Value:   ")); Serial.print(sensor.max_value); Serial.println(F("°C"));
+  Serial.print  (F("Min Value:   ")); Serial.print(sensor.min_value); Serial.println(F("°C"));
+  Serial.print  (F("Resolution:  ")); Serial.print(sensor.resolution); Serial.println(F("°C"));
+  Serial.println(F("------------------------------------"));
+  // Print humidity sensor details.
+  dht.humidity().getSensor(&sensor);
+  Serial.println(F("Humidity Sensor"));
+  Serial.print  (F("Sensor Type: ")); Serial.println(sensor.name);
+  Serial.print  (F("Driver Ver:  ")); Serial.println(sensor.version);
+  Serial.print  (F("Unique ID:   ")); Serial.println(sensor.sensor_id);
+  Serial.print  (F("Max Value:   ")); Serial.print(sensor.max_value); Serial.println(F("%"));
+  Serial.print  (F("Min Value:   ")); Serial.print(sensor.min_value); Serial.println(F("%"));
+  Serial.print  (F("Resolution:  ")); Serial.print(sensor.resolution); Serial.println(F("%"));
+  Serial.println(F("------------------------------------"));
+  // Set delay between sensor readings based on sensor details.
+   delayMS = sensor.min_delay / 1000;
+ Serial.print  (F("Sensor delay: ")); Serial.println(delayMS);
+   delay(delayMS*5);
+  // Get temperature event and print its value.
+  sensors_event_t event;
+  dht.temperature().getEvent(&event);
+  if (isnan(event.temperature)) {
+    Serial.println(F("Error reading temperature!"));
+   
+  }
+  else {
+    Serial.print(F("Temperature: "));
+    Serial.print(event.temperature);
+    Serial.println(F("°C"));
+  }
+  // Get humidity event and print its value.
+  dht.humidity().getEvent(&event);
+  if (isnan(event.relative_humidity)) {
+    Serial.println(F("Error reading humidity!"));
+  }
+  else {
+    Serial.print(F("Humidity: "));
+    Serial.print(event.relative_humidity);
+    Serial.println(F("%"));
+  }
+}
+*/
+static bool measure_environment() {
+  //https://github.com/adafruit/DHT-sensor-library/blob/master/examples/DHT_Unified_Sensor/DHT_Unified_Sensor.ino
+    static unsigned long measurement_timestamp = millis();
+
+    /* Measure once every four seconds. */
+    if (millis() - measurement_timestamp > 8000ul) {
+   
+        sensors_event_t event;
+        dht.temperature().getEvent(&event);
+
+        if (isnan(event.temperature) ) {       
+            temperaturaIstaba=0; 
+        }
+        else {
+              temperaturaIstaba=event.temperature;
+        }
+        dht.humidity().getEvent(&event);
+        if ( isnan(event.relative_humidity)) {              
+              mitrumsIstaba=0; 
+        }
+        else {       
+              mitrumsIstaba=event.relative_humidity;            
+        }
+
+   }
+}
     
  int btnStateLast=0;  
  unsigned long lastButtonPress = 0;
@@ -2015,8 +2290,10 @@ void updateEncoder()
 }
 
 
-void SakaBrot() 
+void SaktBarotFunkcija() 
 {
+  PedejasBarosanasDatums=pulkstenis.now();
+  pedejaBarosana = now.day();
   if(barosanaOn = 0){
     barosanaOn = millis();
   }
@@ -2079,8 +2356,8 @@ void DarbibuIeslegsana()
               uint8_t rez=BaroNedelasDienas & ndParbauditajs;
               if(rez!=0  && nd==nedelasDiena) {
                 if( parametri.Barosana_Stundas*60 +  parametri.Barosana_Minutes< minutesNoDienasSakuma ){
-                    SakaBrot();
-                    pedejaBarosana = now.day();
+                    SaktBarotFunkcija();
+                 
                   }
               } 
               ndParbauditajs=ndParbauditajs*2;          
@@ -2113,15 +2390,15 @@ void DarbibuIeslegsana()
     }
 
     if( mazaGaisma){
-      digitalWrite(RelejaPins_Gaisma1, HIGH);
+      digitalWrite(RelejaPins_Gaisma1, LOW );
     } else {
-      digitalWrite(RelejaPins_Gaisma1, LOW);
+      digitalWrite(RelejaPins_Gaisma1, HIGH);
     }
 
     if( lielaGaisma){
-      digitalWrite(RelejaPins_Gaisma2, HIGH);
-    } else {
       digitalWrite(RelejaPins_Gaisma2, LOW);
+    } else {
+      digitalWrite(RelejaPins_Gaisma2, HIGH);
     }
     
     //CO2
@@ -2136,20 +2413,20 @@ void DarbibuIeslegsana()
         }
     }
     if( co2){
-      digitalWrite(RelejaPins_CO, HIGH);
-    } else {
       digitalWrite(RelejaPins_CO, LOW);
+    } else {
+      digitalWrite(RelejaPins_CO, HIGH);
     }
 
 
     //Temperatura 
 
     if(tempAkvarija< parametri.Temp +parametri.TempTrauksme-2){
-      digitalWrite(RelejaPins_Silditajs, HIGH);
+      digitalWrite(RelejaPins_Silditajs, LOW);
       silditajs=true;
     } 
     if(tempAkvarija> parametri.Temp +parametri.TempTrauksme){ {
-      digitalWrite(RelejaPins_Silditajs, LOW);
+      digitalWrite(RelejaPins_Silditajs, HIGH);
       silditajs=false;
     }
 
@@ -2174,7 +2451,7 @@ void DarbibuIeslegsana()
 void setup()
 {
 Serial.begin(9600);
-Serial.println("Hello World");
+Serial.println("Advarija debuga informācija");
 
     pinMode(Enkoders_SW,INPUT_PULLUP);
     pinMode(Enkoders_DT,INPUT);
@@ -2184,12 +2461,12 @@ Serial.println("Hello World");
     pinMode(RelejaPins_Gaisma2,OUTPUT);
     pinMode(RelejaPins_CO,OUTPUT);
     pinMode(RelejaPins_Silditajs,OUTPUT);
-digitalWrite(RelejaPins_Gaisma1, LOW);
-digitalWrite(RelejaPins_Gaisma2, LOW);
-digitalWrite(RelejaPins_CO, LOW);
-digitalWrite(RelejaPins_Silditajs, LOW);
+digitalWrite(RelejaPins_Gaisma1, HIGH);
+digitalWrite(RelejaPins_Gaisma2, HIGH);
+digitalWrite(RelejaPins_CO, HIGH);
+digitalWrite(RelejaPins_Silditajs, HIGH);
+ 
 
-  
     lastStateCLK = digitalRead(Enkoders_CLK);
     btnStateLast=digitalRead(Enkoders_SW);
 
@@ -2215,24 +2492,21 @@ digitalWrite(RelejaPins_Silditajs, LOW);
   
 
   lcd.backlight();
-  lcd.setCursor(3,0);
-  lcd.print("Hello, world!");
-
   
-
   pulkstenis.begin();       // initialize rtc
  /*  Vienmreiz uzstāda un tad caur programmu 
  pulkstenis.adjust(DateTime(2025,1,9,22,1,0)); 
  */
-lcd.setCursor(2,1);
-//EEPROM.get(0, parametri);
+
 param_Nolasit();
  // DallasTemperature sensoru palaišana
 sensors.begin();
 
 myservo.attach(ServoPins);
-
 tempAkvarija=0;
+PedejasBarosanasDatums=new DateTime();
+ 
+//DHT_setup();
 }
 
 /*********************************************************************************************************************************************************************************
@@ -2240,35 +2514,34 @@ tempAkvarija=0;
 *********************************************************************************************************************************************************************************/
 
 
+
 void loop()
 {
 
-  
-
-
-  //NolasaApkartejoVidi(); 
-
-  float temperature1;
+   /*
+     float temperature1;
   float humidity1;
 
-  /*  if (measure_environment(&temperature1, &humidity1)) {
+    if (measure_environment(&temperature1, &humidity1)) {
         temperaturaIstaba=temperature1;
         mitrumsIstaba=humidity1;
     }
-    */
+   */
+ // DHT nedarbijas
+ //measure_environment();
   //Mēra temp akvārijā
         sensors.requestTemperatures();     
         tempAkvarija=sensors.getTempCByIndex(0);   
   
-  Serial.print("T akvārijā:");
-  Serial.println(tempAkvarija);
+ // Serial.print("T akvārijā:");
+  //Serial.println(tempAkvarija);
  
 /*erial.print(temperature);
   Serial.print(" Mitrums:");
   
 Serial.println(humidity);
 */
-  delay(50);           //  5 sekundes
+  delay(2);          
    now = pulkstenis.now();
 
 DarbibuIeslegsana();
@@ -2276,7 +2549,7 @@ Ekrans();
  if (Enkoders()){
     Poga_OnClick();
  }  
-//BarosanasVeiksana();
+BarosanasVeiksana();
 
 
 /*
