@@ -63,7 +63,7 @@ RTC_DS3231 pulkstenis;                     // create rtc for the DS3231 RTC modu
 int counter = 0;
 int currentStateCLK;
 int lastStateCLK;
-long barosanaOn = 0;
+unsigned long barosanaOn = 0;
 
 float temperature;
 float humidity; 
@@ -2294,7 +2294,7 @@ void SaktBarotFunkcija()
 {
   PedejasBarosanasDatums=pulkstenis.now();
   pedejaBarosana = now.day();
-  if(barosanaOn = 0){
+  if(barosanaOn == 0){
     barosanaOn = millis();
   }
 }
@@ -2305,21 +2305,33 @@ void SaktBarotFunkcija()
 *********************************************************************************************************************************************************************************/
 
 
-static const long BarosanasCiklaIlgums = 50; //decimalsekundes
+static const unsigned long BarosanasCiklaVienaGradaIlgums = 50; //decimalsekundes
+static const unsigned long BarosanasMotoraMaxPagriezienaLenkis = 180;
+static const unsigned long BarosanasMotoraMaxPagriezienaLenkis_X_2 = BarosanasMotoraMaxPagriezienaLenkis*2;
 
 void BarosanasVeiksana()
 {
-  if(barosanaOn = 0){
+  if(barosanaOn == 0){
     return;
   }
-  long t1 = millis() - barosanaOn;
-  long x = t1 / BarosanasCiklaIlgums;
-  if(x <= 100) {
+  unsigned long mils=millis();
+  if( barosanaOn >mils){
+    //Notikusi milisekunšu nobīde - overflow, tāpēc sakam no sākuma
+    barosanaOn=mils;
+    return;    
+  }
+  unsigned long  t1 = mils- barosanaOn; // delata milisekundes
+  unsigned long  x = t1 / BarosanasCiklaVienaGradaIlgums; 
+
+  Serial.print("Motora lenkis:");
+  Serial.println(x);
+  
+  if(x <= BarosanasMotoraMaxPagriezienaLenkis) {
     myservo.write(x);
   }
   else {
-    if (x <= 200){
-    x = 200 - x; //atpakaļ ceļš
+    if (x < BarosanasMotoraMaxPagriezienaLenkis_X_2){
+    x = BarosanasMotoraMaxPagriezienaLenkis_X_2 - x; //atpakaļ ceļš
     myservo.write(x);
     }
     else {
@@ -2503,6 +2515,7 @@ param_Nolasit();
 sensors.begin();
 
 myservo.attach(ServoPins);
+myservo.write(0);
 tempAkvarija=0;
 PedejasBarosanasDatums=new DateTime();
  
