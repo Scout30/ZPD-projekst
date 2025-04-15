@@ -1749,7 +1749,7 @@ if(gaismaEkranam> mi || tempTrauksme){
 
   
 
-  if( ((sekundes/10)%2==0) || tempTrauksme  || temperaturaIstaba==0 /*THC sensors nedarbojas*/){
+  if( ((sekundes/10)%2==0) || tempTrauksme  || temperaturaIstaba==0 /*Ja THC sensors nedarbojas, tad vienmēr rāda 1. variantu */){
   // katras 10 sekundes daījums būs pāra skaitlis
       lcd.print("T=");
       lcd.print(tempAkvarija, 1);
@@ -1920,8 +1920,9 @@ void ZimeMenuArGarumzimem(int rinda, int menuPunkts){
           break;
        }
 }
-void  ZimeMenu(){
-   
+
+
+void  ZimeMenu(){  
    
        
    Menu_MinVertiba=0;
@@ -1988,7 +1989,7 @@ void  ZimeMenu(){
 
 
 
-
+//********************************************************  Paštaisīto burtu zīmēšna ***********************************************//
 
 uint8_t Simboli_Zivs[8]  = {0x0,0x8,0x16,0x1f,0x16,0x4,0x0};
 /*uint8_t Simboli_CO2_1[8]  = {000000,
@@ -2070,7 +2071,7 @@ uint8_t Simboli_Nakts[8]  = {B00110,
 void param_UzstadaNoklusetos(){
   Parametri parametriTemp;
   //Kopē visus struktūras datus atmiņā
-  memcpy(&parametriTemp,&parametri,sizeof parametri );
+  memcpy(&parametriTemp, &parametri, sizeof parametri );
 }
 
 void param_Nolasit(){
@@ -2083,7 +2084,7 @@ void param_Nolasit(){
 }
 
 void param_Saglabat(){
-  //TODO: Pārbauda vai kaut kas ir mainijies
+  //TODO: Pārbauda vai kaut kas ir mainijusies struktura
    Parametri parametriTemp;
   EEPROM.get(0, parametriTemp);
   /*if(
@@ -2100,51 +2101,10 @@ void param_Saglabat(){
 
 // ===========================================================================  Parametri Beigas
  
-
-
-/*static bool NolasaApkartejoVidi( ) {
-   
-  return measure_environment(&temperature, &humidity);
-   static unsigned long measurement_timestamp = millis();
-    /* Measure once every four seconds. * /
-    if (millis() - measurement_timestamp > 4000ul) {
-        sensors.requestTemperatures();     
-        tempAkvarija=sensors.getTempCByIndex(0);        
-      
-        if (dht_sensor.measure(&temperature, &humidity)) {
-            measurement_timestamp = millis();
-            return (true);
-        }
-
-
-    }
-
-    return (false);
-}*/
-/*
-Nestrādā - uzkaras arduino, ja ir daudz koda
-static bool measure_environment(float *temperature, float *humidity) {
-    static unsigned long measurement_timestamp = millis();
-
-    /* Measure once every four seconds. * /
-    if (millis() - measurement_timestamp > 8000ul) {
-    
-
-        // mēra ārējas vides datus
-        if (
-          dht_sensor.measure(temperature, humidity)
-          ) {
-            measurement_timestamp = millis();
-            return (true);
-        }
-    }
-
-    return (false);
-}
-*/
-
+ 
 /*
 DHT sensora inicialzēšana lai notestētu tā darebību
+Iespējams DHT sensora fizisks bojājums, tāpēc atstāju oficiālo sebuga kodu didliotekai, lai varētu notestēt, kad būs iespējams nomainīt sensoru
 
 uint32_t delayMS;
 void DHT_setup() {
@@ -2255,7 +2215,7 @@ static bool measure_environment() {
     return false;
 	}
 
- btnStateLast=btnState;
+  btnStateLast=btnState;
 	// Put in a slight delay to help debounce the reading
 	delay(1);
   return false;
@@ -2263,7 +2223,9 @@ static bool measure_environment() {
 
 void updateEncoder()
 {
-	// Read the current state of CLK
+	// Paraugs no https://lastminuteengineers.com/rotary-encoder-arduino-tutorial/
+
+  // Read the current state of CLK
 	currentStateCLK = digitalRead(Enkoders_CLK);
 
 	// If last and current state of CLK are different, then pulse occurred
@@ -2273,11 +2235,7 @@ void updateEncoder()
 		// If the DT state is different than the CLK state then
 		// the encoder is rotating CCW so decrement
 		if (digitalRead(Enkoders_DT) != currentStateCLK) {
-			counter --;
-     // if(counter<0){
-      //  counter=0;
-      //}
-		//	currentDir ="CCW";
+			counter --;    
 		} else {
 			// Encoder is rotating CW so increment
 			counter ++;
@@ -2452,9 +2410,7 @@ void DarbibuIeslegsana()
       {
         tempTrauksme=false;
       }
-
   }
-
 }
 /*********************************************************************************************************************************************************************************
                                                                         SETUPS
@@ -2462,9 +2418,9 @@ void DarbibuIeslegsana()
 
 void setup()
 {
-Serial.begin(9600);
-Serial.println("Advarija debuga informācija");
-
+  Serial.begin(9600);
+  Serial.println("Advarija debuga informācija");
+//Definē arduion kontaktu pielietojumu un uzstāda sākotnējās vērtības
     pinMode(Enkoders_SW,INPUT_PULLUP);
     pinMode(Enkoders_DT,INPUT);
     pinMode(Enkoders_CLK,INPUT);
@@ -2473,29 +2429,28 @@ Serial.println("Advarija debuga informācija");
     pinMode(RelejaPins_Gaisma2,OUTPUT);
     pinMode(RelejaPins_CO,OUTPUT);
     pinMode(RelejaPins_Silditajs,OUTPUT);
-digitalWrite(RelejaPins_Gaisma1, HIGH);
-digitalWrite(RelejaPins_Gaisma2, HIGH);
-digitalWrite(RelejaPins_CO, HIGH);
-digitalWrite(RelejaPins_Silditajs, HIGH);
+   
+    digitalWrite(RelejaPins_Gaisma1, HIGH);
+    digitalWrite(RelejaPins_Gaisma2, HIGH);
+    digitalWrite(RelejaPins_CO, HIGH);
+    digitalWrite(RelejaPins_Silditajs, HIGH);
  
 
     lastStateCLK = digitalRead(Enkoders_CLK);
     btnStateLast=digitalRead(Enkoders_SW);
 
-  // Call updateEncoder() when any high/low changed seen
-	// on interrupt 0 (pin 2), or interrupt 1 (pin 3)
+  // Ievades pogas enkodera piesaiste pārtraukumu (interrupt) apstrādei izsaucot updateEncoder()
+	// pārtraukums Nr 0  priekš pin 2
+  // pārtraukums Nr 1 priekš  pin 3
 	attachInterrupt(0, updateEncoder, CHANGE);
 	attachInterrupt(1, updateEncoder, CHANGE);
 
-
-  lcd.init();                      // initialize the lcd 
-   fonaGaisma=false;
-   fonaGaismaUzstaditaVertiba=true;
-  // Print a message to the LCD.
+ //LCD ekrana sagatavoošana
+  lcd.init();   
+  // Maštaisīto simbolu inicializēšana  
   lcd.createChar(Zivs,Simboli_Zivs);
   lcd.createChar(GaraisMazais_ee, Simboli_ee);
   lcd.createChar(Latviesu_sh, Simboli_Sh);
-
   lcd.createChar(3, Simboli_CO2_2);
   lcd.createChar(4, Simboli_Saulekts);
   lcd.createChar(5, Simboli_Saule);
@@ -2506,20 +2461,26 @@ digitalWrite(RelejaPins_Silditajs, HIGH);
   lcd.backlight();
   
   pulkstenis.begin();       // initialize rtc
- /*  Vienmreiz uzstāda un tad caur programmu 
- pulkstenis.adjust(DateTime(2025,1,9,22,1,0)); 
+ /*  Vienmreiz uzstāda un tad caur programmu, 
+    pulkstenis.adjust(DateTime(2025,1,9,22,1,0)); 
  */
-
+//Saglabāto parametru nolašišana
 param_Nolasit();
  // DallasTemperature sensoru palaišana
 sensors.begin();
-
+//Servo motors 
 myservo.attach(ServoPins);
 myservo.write(0);
+
+//Sākuma stavokļi mainīgajiem
 tempAkvarija=0;
 PedejasBarosanasDatums=new DateTime();
+fonaGaisma=false;
+fonaGaismaUzstaditaVertiba=true;
+
  
-//DHT_setup();
+ // DHT nedarbijas, iespējams sensora bojājuma dēļ, tādēļ izkomentēts
+ //DHT_setup();
 }
 
 /*********************************************************************************************************************************************************************************
@@ -2531,31 +2492,17 @@ PedejasBarosanasDatums=new DateTime();
 void loop()
 {
 
-   /*
-     float temperature1;
-  float humidity1;
-
-    if (measure_environment(&temperature1, &humidity1)) {
-        temperaturaIstaba=temperature1;
-        mitrumsIstaba=humidity1;
-    }
-   */
- // DHT nedarbijas
+    
+ // DHT nedarbijas, iespējams sensora bojājuma dēļ, tādēļ izkomentēts
  //measure_environment();
-  //Mēra temp akvārijā
-        sensors.requestTemperatures();     
-        tempAkvarija=sensors.getTempCByIndex(0);   
-  
- // Serial.print("T akvārijā:");
-  //Serial.println(tempAkvarija);
  
-/*erial.print(temperature);
-  Serial.print(" Mitrums:");
+  //Mēra temp akvārijā
+  sensors.requestTemperatures();     
+  tempAkvarija=sensors.getTempCByIndex(0);   
   
-Serial.println(humidity);
-*/
-  delay(2);          
-   now = pulkstenis.now();
+
+        
+now = pulkstenis.now();
 
 DarbibuIeslegsana();
 Ekrans();
@@ -2563,7 +2510,7 @@ Ekrans();
     Poga_OnClick();
  }  
 BarosanasVeiksana();
-
+delay(2);   //Nogaida 2 milisekundes katrā ciklā, lai paspēj kontakti nodzirksteļot un nomierināties
 
 /*
 if(fonaGaismaUzstaditaVertiba!=fonaGaisma){
@@ -2576,32 +2523,5 @@ if(fonaGaismaUzstaditaVertiba!=fonaGaisma){
   fonaGaismaUzstaditaVertiba=fonaGaisma;
 }
 */
-
- // Serial.print("counter=");
- // Serial.println(counter);
-
- // Serial.print("Menu_AktivaIzvelne=");
- // Serial.println(Menu_AktivaIzvelne);
-/*
-    lcd.setCursor(1,0);
-  //lcd.autoscroll();
-  lcd.write(byte(0));
-  lcd.write(byte(1));
-   lcd.write(byte(2));
-   lcd.print("CO");
-   lcd.write(byte(3));
-   lcd.write(byte(4));
-   lcd.write(byte(5));
-   lcd.write(byte(6));
-   lcd.write(byte(7));
-   lcd.setCursor(1,2);
-   lcd.setCursor(1,0);
- // lcd.print("@ Hello, world!");
-  lcd.cursor();
-    lcd.blink();
-
-
-  
-  fonaGaisma=! fonaGaisma;
-*/
+ 
 }
