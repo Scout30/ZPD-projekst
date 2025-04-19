@@ -2017,14 +2017,15 @@ void  ZimeMenu(){
 
 //********************************************************  Paštaisīto burtu zīmēšna ***********************************************//
 
-uint8_t Simboli_Zivs[8]  = {0x0,0x8,0x16,0x1f,0x16,0x4,0x0};
+uint8_t Simboli_Zivs[8]  = {0x0,0x8,0x16,0x1f,0x16,0x4,0x0,0x0};
 /*uint8_t Simboli_CO2_1[8]  = {000000,
                      000011,
                      000100,
                      000100,
                      000100,
                      000011,
-                     000000};*/
+                     000000,
+		     B00000};*/
 
 uint8_t Simboli_Sh[8]  = {B10010,
                      B01100,
@@ -2032,7 +2033,8 @@ uint8_t Simboli_Sh[8]  = {B10010,
                      B10000,
                      B01110,
                      B00001,
-                     B01110};
+                     B01110,
+                     B00000};
 
 uint8_t Simboli_ee[8]  = {B01110,
                      B00000,
@@ -2040,7 +2042,8 @@ uint8_t Simboli_ee[8]  = {B01110,
                      B10001,
                      B11111,
                      B10000,
-                     B01110};
+                     B01110,
+                     B00000};
 
 
 /*uint8_t Simboli_CO2_2[8]  = {B00000,
@@ -2049,7 +2052,8 @@ uint8_t Simboli_ee[8]  = {B01110,
                      B10010,
                      B01100,
                      B00011,
-                     B00011};*/
+                     B00011,
+		     B00000};*/
 
 uint8_t Simboli_CO2_2[8]  = {B00000,
                      B00000,
@@ -2057,7 +2061,8 @@ uint8_t Simboli_CO2_2[8]  = {B00000,
                      B01100,
                      B10010,
                      B00100,                     
-                     B11110};
+                     B11110,
+                     B00000};
 
 uint8_t Simboli_Saulekts[8]  = {B00000,
                      B00000,
@@ -2065,14 +2070,16 @@ uint8_t Simboli_Saulekts[8]  = {B00000,
                      B10101,
                      B00000,
                      B01110,
-                     B11111};
+                     B11111,
+                     B00000};
 uint8_t Simboli_Saule[8]  = {B00000,
                      B01110,
                      B11111,
                      B11111,
                      B11111,
                      B01110,
-                     B00000};
+                     B00000,
+                     B00000,};
 
 uint8_t Simboli_Saulriets[8]  = {B00000,
                      B01110,
@@ -2080,7 +2087,8 @@ uint8_t Simboli_Saulriets[8]  = {B00000,
                      B00000,
                      B01110,
                      B00000,
-                     B00100};
+                     B00100,
+                     B00000};
 
 uint8_t Simboli_Nakts[8]  = {B00110,
                      B01100,
@@ -2088,7 +2096,8 @@ uint8_t Simboli_Nakts[8]  = {B00110,
                      B11000,
                      B01111,
                      B00110,
-                     B00000};
+                     B00000,
+		     B00000};
 
 
 
@@ -2334,7 +2343,7 @@ void BarosanasVeiksana()
 void DarbibuIeslegsana() 
 {
 
-    now = pulkstenis.now();
+    //now = pulkstenis.now();
     int minutesNoDienasSakuma = now.hour()*60+now.minute();
     //pārbauda vai jābaro
      if (pedejaBarosana != now.day()) {
