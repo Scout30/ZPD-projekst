@@ -82,9 +82,9 @@ static const int DHT_SENSOR_PIN = 11;// uz 10 nestradā
 
 DHT_Unified dht(DHT_SENSOR_PIN, DHTTYPE);
 
-LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
-RTC_DS3231 pulkstenis;                     // create rtc for the DS3231 RTC module, address is fixed at 0x68
-//#define  pulkstenaAtmina_I2C 0x57;
+LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display - 4 rindu lielakām ekranam būs 20,4
+RTC_DS3231 pulkstenis;                     // create rtc for the DS3231 RTC module, address is fixed at 0x68. Svarīgi lai I2C adreses nesakrīt
+//#define  pulkstenaAtmina_I2C 0x57; // Pulksteņa 32 bitu atmiņu pašlaik nelietoju, bet lai nav pēctam jāmeklē adrese sablabāju.
 
 int counter = 0;
 int currentStateCLK;
@@ -111,7 +111,7 @@ Servo myservo;
 DateTime PedejasBarosanasDatums;
 DateTime now;
 
-
+//**********************************************************     EEPROM atminā sablabājamā parametru struktūra        *********************************************************************************************//
 struct Parametri{
   uint8_t Saullekts_Stundas =  10;
   uint8_t Saullekts_Minutes =  0;
@@ -144,6 +144,8 @@ struct Parametri{
 
 Parametri parametri;
 
+
+//*******************************************  Lietotāja izvēlnes stāvokļu mašīnas soļi ******************************************************//
 enum Menu_Izvelnes{
   Galvena=0,
   Menu=5,
@@ -157,7 +159,7 @@ enum Menu_Izvelnes{
   Barosana=80,
   SaktBarot=90
 };
-#define  ZimejamieMenuci 10
+#define  ZimejamieMenuci 10 // Darbību skaits izvēlnēs
 
 Menu_Izvelnes Menu_AktivaIzvelne=Galvena;
 Menu_Izvelnes Menu_IeprieksejaIzvelne=-1;
@@ -166,7 +168,6 @@ int Menu_MinVertiba=0;
 int Menu_MaxVertiba=0;
 
 void Ekrans(){
-
 
   switch(Menu_AktivaIzvelne){
     case Galvena:
@@ -385,7 +386,7 @@ if (
           break;      
 
         default:
-          //Vērtība pāri robezām
+          //Vērtība pāri robežām
           pozicija=0;
           break;
       }
@@ -639,8 +640,7 @@ void  Zime_Barosana(){
         aktivaisLogsVec=aktivaisLogs;
         counter=0;   
         lcd.clear();
-        if(aktivaisLogs==1){
-        
+        if(aktivaisLogs==1){       
 
           skaitlis1Vecais=-500;
           skaitlis2Vecais=-500;
@@ -782,8 +782,7 @@ if(aktivaisLogs==1){
             lcd.write(byte(Kvadratsakne));
           } 
           ndParbauditajs=ndParbauditajs*2;          
-      }   
-   
+      }    
       
       lcd.setCursor(1 + 2*(pozicija-3/*Pirmdiena ir 3*/),1);                
       } 
@@ -798,18 +797,17 @@ void  Temperatura_OnClick(){
           Menu_AktivaIzvelne=Galvena;        
         
           break;
-        case 1: 
-        
+        case 1:        
        
            if(laboPoziciju){
-              pozicija++; //Ejam tālāk labot minūtes
+              pozicija++; //Ejam tālāk +/- nobīdi
             } else {
               laboPoziciju=true;
               lcd.blink();
             }          
             counter=0;          
           break;
-        case 2: //Minuites        
+        case 2: // +/- nobīde        
           laboPoziciju=!laboPoziciju;
           counter=0;
             if(laboPoziciju){
@@ -841,7 +839,6 @@ void  Temperatura_OnClick(){
           }        
 
           break;
-         
 
         default:
           //Vērtība pāri robezām
@@ -852,45 +849,47 @@ void  Temperatura_OnClick(){
 }
 //bookmark2
 void  Zime_Temperaturu(){
-    if(Menu_IeprieksejaIzvelne!=Tempratura ){
-    
+    if(Menu_IeprieksejaIzvelne!=Tempratura ){    
+            
             param_Nolasit();
-            /*float Temp=27;  
-  float TempTrauksme=4;*/
+            /*
+            Skitļus glabā kā float daļkaitļus, bet labojot labo kā int veselus skaitļus, reizinot ar 10, lai varētu labot līdz grāda desmitdaļām. 
+              float Temp=27.933;  int skaitlis1 =279;
+              float TempTrauksme=4;  int skaitlis2 =40;
+            */
             skaitlis1=parametri.Temp*10;
             skaitlis2=parametri.TempTrauksme*10;
 
-        //Pārbauda vai zivīm temeratūra ir nomālā diapazonā
-       if(skaitlis1>350 ||skaitlis1<100 ){
-        skaitlis1 = 270;
-       }
-       if(skaitlis2>100 || skaitlis2<5){
-        skaitlis2 = 5;
-       }
+              //Pārbauda vai zivīm temeratūra ir nomālā diapazonā
+            if(skaitlis1>350 ||skaitlis1<100 ){
+              skaitlis1 = 270;//noklusētā vērtība 27 grādi
+            }
+            if(skaitlis2>100 || skaitlis2<5){
+              skaitlis2 = 5;//noklusētā vērtība 0.5 grāsdi
+            }
             
             pozicija=0;
             pozicijaVeca=0;
             laboPoziciju=false;      
        
-        Menu_IeprieksejaIzvelne=Tempratura;
-        counter=0;   
-        lcd.clear();
+            Menu_IeprieksejaIzvelne=Tempratura;
+            counter=0;   
+            lcd.clear();
       
-          skaitlis1Vecais=-500;
-      
-          lcd.setCursor(0,0);
-          lcd.write(byte(BultaAtpakal));
-          String ugarais=" Temperatura   ";
-          ugarais[9]=Garais_uu;          
-          lcd.print(ugarais);   
+            skaitlis1Vecais=-500;
+        
+            lcd.setCursor(0,0);
+            lcd.write(byte(BultaAtpakal));
+            String ugarais=" Temperatura   ";
+            ugarais[9]=Garais_uu;          
+            lcd.print(ugarais);   
 
-          lcd.setCursor(15,0);
-          lcd.write(byte(Zivs));        
+            lcd.setCursor(15,0);
+            lcd.write(byte(Zivs));        
 
-        lcd.cursor(); 
-        lcd.noBlink();   
-            
-      }
+            lcd.cursor(); 
+            lcd.noBlink();
+    }
     if(pozicija>4 && pozicija<0){
         pozicija=0;
       }
@@ -926,8 +925,7 @@ void  Zime_Temperaturu(){
       
 
     } else {
-      MainaKursoraPozicijuLoga(4);
-    
+      MainaKursoraPozicijuLoga(4);    
     }
  
 
@@ -941,8 +939,8 @@ if (
       skaitlis2Vecais=skaitlis2; 
       pozicijaVeca=pozicija;        
 
-          lcd.setCursor(0,1);
-          lcd.print("      +/-         ");
+        lcd.setCursor(0,1);
+        lcd.print("      +/-         ");
         lcd.setCursor(1,1);
         
         lcd.print(skaitlis1/10);
@@ -952,7 +950,7 @@ if (
         lcd.setCursor(10,1);
         
         lcd.print(skaitlis2/10);
-       lcd.print(".");
+        lcd.print(".");
         lcd.print(skaitlis2 % 10);
         
         switch(pozicija){
@@ -972,14 +970,12 @@ if (
           default:           
             break;
         }
-      } 
- 
-  
+      }   
 }
 
 /********************************************** CO2 ******************************************************************/
 void  CO2_OnClick(){
-     Serial.print("pozicija: ");  Serial.println(pozicija);
+   //Serial.print("pozicija: ");  Serial.println(pozicija);
    switch(pozicija){
         case 0:  //Atgriežamies neko nesaglabājot
           Menu_AktivaIzvelne=Galvena;
@@ -988,21 +984,22 @@ void  CO2_OnClick(){
           laboPoziciju=false;
            lcd.noBlink();
           co2on=!co2on;
- Serial.print("co2: ");
-          Serial.println(co2on);
+         //Serial.print("co2: ");
+         //Serial.println(co2on);
           break;
         case 2: //Stundas
         case 3: //Minuites  
-       case 4: //Stundas         
+        case 4: //Stundas         
            if(laboPoziciju){
-              pozicija++; //Ejam tālāk labot minūtes
+              pozicija++; //Ejam tālāk labot nākamo lauku
             } else {
               laboPoziciju=true;
               lcd.blink();
             }          
             counter=0;          
           break;
-        case 5: //Minuites        
+        case 5: //Minuites    
+          //Pēdējais labojamais lauks, tāpēc ja tagad jau labo tad beidz labot uz klikšķa    
           laboPoziciju=!laboPoziciju;
           counter=0;
             if(laboPoziciju){
@@ -1039,10 +1036,9 @@ void  CO2_OnClick(){
           else {
                NepareizasVertibas();
                 Zime_CO2(); //Pārzīmē ekrānu
-          }        
+          }       
 
-          break;
-         
+          break;         
 
         default:
           //Vērtība pāri robezām
@@ -1051,19 +1047,21 @@ void  CO2_OnClick(){
           break;
       }      
 }
-//bookmark1
+
 bool co2onVec;
 void  Zime_CO2(){
     if(Menu_IeprieksejaIzvelne!=CO2 ){
     
             param_Nolasit();
-            /*  uint8_t CO2On_Stundas =  10;  
-  uint8_t CO2On_Minutes =  30; 
+            /*  
+            Datu struktūras fragments ar noklusētajām vērtībām:
+            int8_t CO2On_Stundas =  10;  
+            uint8_t CO2On_Minutes =  30; 
 
-  uint8_t CO2Off_Stundas =  19;
-  uint8_t CO2Off_Minutes =  30; 
+            uint8_t CO2Off_Stundas =  19;
+            uint8_t CO2Off_Minutes =  30; 
 
-  bool CO2Izmatosana=1;  */
+            bool CO2Izmatosana=1;  */
             skaitlis1=parametri.CO2On_Stundas;
             skaitlis2=parametri.CO2On_Minutes;
             skaitlis3=parametri.CO2Off_Stundas;
@@ -1078,18 +1076,17 @@ void  Zime_CO2(){
             pozicijaVeca=0;
             laboPoziciju=false;      
        
-        Menu_IeprieksejaIzvelne=CO2;
-        counter=0;   
-        lcd.clear();
+            Menu_IeprieksejaIzvelne=CO2;
+            counter=0;   
+            lcd.clear();
       
-          skaitlis1Vecais=-500;
-      
-          lcd.setCursor(0,0);
-          lcd.write(byte(BultaAtpakal));
-          lcd.print(" CO2: [ ]       ");         
-        lcd.cursor(); 
-        lcd.noBlink();   
-            
+            skaitlis1Vecais=-500;
+        
+            lcd.setCursor(0,0);
+            lcd.write(byte(BultaAtpakal));
+            lcd.print(" CO2: [ ]       ");         
+            lcd.cursor(); 
+            lcd.noBlink(); 
       }
     if(pozicija>6 && pozicija<0){
         pozicija=0;
@@ -1147,8 +1144,7 @@ void  Zime_CO2(){
       
 
     } else {
-      MainaKursoraPozicijuLoga(6);
-    
+      MainaKursoraPozicijuLoga(6);    
     }
  
 
@@ -1167,9 +1163,6 @@ if (
       skaitlis4Vecais=skaitlis4;
       co2onVec=co2on;
       pozicijaVeca=pozicija;
-
-
-        
 
         lcd.setCursor(1,1);
         if(skaitlis1>9){
@@ -1239,7 +1232,6 @@ if (
             break;
         }
       } 
- 
   
 }
 
@@ -1487,7 +1479,7 @@ void  DatumsUnLaiks_OnClick(){
           ){        
                
              pulkstenis.adjust(DateTime(skaitlis1,skaitlis2,skaitlis3,skaitlis4,skaitlis5,0));  
-            now = pulkstenis.now();
+            now = pulkstenis.now(); //Nolasa reāli uzstādīto laiku no pulksteņa, tads kaāds ir saglabāts
             if( 
               skaitlis1!=now.year() ||
               skaitlis2!=now.month() ||
@@ -1701,11 +1693,9 @@ void  Zime_DatumsUnLaiks(){
 
     }
 
+/*****************************************************  Galvanais logs  ******************************************************************/
 
-
- unsigned long displayTime_Apdeits=0;
-
- 
+unsigned long displajaLaikaApdeitsVeiks=0; 
 
 void  ZimePamatlogu(){
   if(Menu_AktivaIzvelne!=Menu_IeprieksejaIzvelne){
@@ -1716,11 +1706,12 @@ void  ZimePamatlogu(){
     lcd.noBlink();
    }
 
- unsigned long  mi=millis();
-  if(displayTime_Apdeits +500>mi){
+  unsigned long  mi=millis();
+  if(displajaLaikaApdeitsVeiks +500>mi){
+    // Nav jēga pārzīmēt pamatekrānu biežāk kā reizi 0.5 sekundēs, jo tur nekas nebūs mainijies
     return;
   }
-  displayTime_Apdeits=mi;  
+  displajaLaikaApdeitsVeiks=mi;  
 
 // Fona gaismas uztādīšana
 if(gaismaEkranam> mi || tempTrauksme){
@@ -1763,20 +1754,23 @@ if(gaismaEkranam> mi || tempTrauksme){
     lcd.print("0"); 
   }
   lcd.print(minutes);
-  lcd.print(':');
-  if(sekundes<10){
-    lcd.print("0"); 
-  }
-  lcd.print(sekundes);
-  lcd.print("    ");  
+ // Ja mēnesis ir 2 ciparu, tad ekrānā nav vietas sekundēm 
+  if(menesis<10){
+      lcd.print(':');
+      if(sekundes<10){
+        lcd.print("0"); 
+      }
+      lcd.print(sekundes);
+   }
+  lcd.print("     ");  
 
   //Attēlo vides parametrus
   lcd.setCursor(0,1);
 
   
-
+// Reizi 10 sekundēs maina to, ko attēlo 2. rindiņā
   if( ((sekundes/10)%2==0) || tempTrauksme  || temperaturaIstaba==0 /*Ja THC sensors nedarbojas, tad vienmēr rāda 1. variantu */){
-  // katras 10 sekundes daījums būs pāra skaitlis
+    // katras 10 sekundes daījums būs pāra skaitlis, lidz ar to tas dalīsies ar 2 bez atlikuma, kamēr nomainīsies nakamais sekunžu desmits  
       lcd.print("T=");
       lcd.print(tempAkvarija, 1);
       lcd.print("C            ");
@@ -1810,6 +1804,7 @@ if(gaismaEkranam> mi || tempTrauksme){
       } 
 
   } else {
+        //Otrās rindiņas otrs variants
         lcd.print("T");
         lcd.write(byte(3));   //Simboli_CO2_2
         lcd.print("=");
@@ -1817,12 +1812,12 @@ if(gaismaEkranam> mi || tempTrauksme){
         lcd.print("C, H=");
         lcd.print(mitrumsIstaba, 1);
         lcd.println("%   ");
-  } 
-
+  }
 }
-
+//*********************************************************  Poga_OnClick *******************************************************************************//
+//Vadības pogas klikška apstrāda atbilstoši iekārtas stāvoklim
 void Poga_OnClick(){
-  gaismaEkranam= millis() + 60*1000; //Iesledzam gaismu uz 60 sekundēm
+  gaismaEkranam= millis() + 60*1000; //Ieslēdzam ekrāna gaismu uz 60 sekundēm
 
   switch(Menu_AktivaIzvelne){
     case Galvena:
@@ -1903,6 +1898,7 @@ void Poga_OnClick(){
 
 }
 
+//***************************************************** Galvenā izvēlne  ^^^^^^^^^^  ZimeMenu ****************************************//
 int ZimeMenu_Nobide;
 int ZimeMenu_VecaisLogs;
 int ZimeMenu_NobideVeca;
@@ -1918,6 +1914,7 @@ int ZimeMenu_NobideVeca;
       "Barosana        ",
       "Sakt barot      ",
       "<--Atgriesties  "} ; 
+
 void ZimeMenuArGarumzimem(int rinda, int menuPunkts){
     lcd.setCursor(0,rinda);
     lcd.print(menuPunkti[menuPunkts]);
@@ -1948,24 +1945,23 @@ void ZimeMenuArGarumzimem(int rinda, int menuPunkts){
 }
 
 
-void  ZimeMenu(){  
-   
+void  ZimeMenu(){
        
    Menu_MinVertiba=0;
    Menu_MaxVertiba=ZimejamieMenuci;
    int x=counter /2;
 
    if(Menu_AktivaIzvelne!=Menu_IeprieksejaIzvelne){
-    Menu_IeprieksejaIzvelne=Menu_AktivaIzvelne;
-    counter=Menu_MinVertiba;
-    x=1;
-    counter=3;
-    ZimeMenu_Nobide=-1;
-    ZimeMenu_VecaisLogs=-10;
-    ZimeMenu_NobideVeca=-10;
-    lcd.clear();     
-    lcd.cursor();
-    lcd.blink();
+      Menu_IeprieksejaIzvelne=Menu_AktivaIzvelne;
+      counter=Menu_MinVertiba;
+      x=1;
+      counter=3;
+      ZimeMenu_Nobide=-1;
+      ZimeMenu_VecaisLogs=-10;
+      ZimeMenu_NobideVeca=-10;
+      lcd.clear();     
+      lcd.cursor();
+      lcd.blink();
    }
    
    if(x<0){
@@ -1986,12 +1982,12 @@ void  ZimeMenu(){
    }
    int logs=x+ZimeMenu_Nobide;
 
-  if(ZimeMenu_VecaisLogs!=logs) {
-    ZimeMenu_VecaisLogs=logs;
-    ZimeMenuArGarumzimem(0,logs);
-    ZimeMenuArGarumzimem(1,logs+1);
-    ZimeMenu_NobideVeca=-10;
-  }
+   if(ZimeMenu_VecaisLogs!=logs) {
+      ZimeMenu_VecaisLogs=logs;
+      ZimeMenuArGarumzimem(0,logs);
+      ZimeMenuArGarumzimem(1,logs+1);
+      ZimeMenu_NobideVeca=-10;
+   }
 
   if(ZimeMenu_NobideVeca!=ZimeMenu_Nobide){
     ZimeMenu_NobideVeca=ZimeMenu_Nobide;
@@ -2010,7 +2006,7 @@ void  ZimeMenu(){
 
  
    Serial.print("ZimeMenu_Nobide=");
-  Serial.println(ZimeMenu_Nobide);
+   Serial.println(ZimeMenu_Nobide);
 }
 
 
@@ -2018,14 +2014,15 @@ void  ZimeMenu(){
 //********************************************************  Paštaisīto burtu zīmēšna ***********************************************//
 
 uint8_t Simboli_Zivs[8]  = {0x0,0x8,0x16,0x1f,0x16,0x4,0x0,0x0};
-/*uint8_t Simboli_CO2_1[8]  = {000000,
-                     000011,
-                     000100,
-                     000100,
-                     000100,
-                     000011,
-                     000000,
-		     B00000};*/
+/*uint8_t Simboli_CO2_1[8]  = {B000000,
+                     B000011,
+                     B000100,
+                     B000100,
+                     B000100,
+                     B000011,
+                     B000000,
+                     B000000};
+                     */
 
 uint8_t Simboli_Sh[8]  = {B10010,
                      B01100,
@@ -2053,7 +2050,7 @@ uint8_t Simboli_ee[8]  = {B01110,
                      B01100,
                      B00011,
                      B00011,
-		     B00000};*/
+                     B00000};*/
 
 uint8_t Simboli_CO2_2[8]  = {B00000,
                      B00000,
@@ -2079,7 +2076,7 @@ uint8_t Simboli_Saule[8]  = {B00000,
                      B11111,
                      B01110,
                      B00000,
-                     B00000,};
+                     B00000};
 
 uint8_t Simboli_Saulriets[8]  = {B00000,
                      B01110,
@@ -2097,11 +2094,11 @@ uint8_t Simboli_Nakts[8]  = {B00110,
                      B01111,
                      B00110,
                      B00000,
-		     B00000};
+                     B00000};
 
 
 
-// ===========================================================================  Parametri
+// ===========================================================================  Parametri un to saglabāšana EEPROM atmiņā
 
 void param_UzstadaNoklusetos(){
   Parametri parametriTemp;
@@ -2119,27 +2116,52 @@ void param_Nolasit(){
 }
 
 void param_Saglabat(){
-  //TODO: Pārbauda vai kaut kas ir mainijusies struktura
+  // Pārbauda vai kaut kas ir mainijusies struktūrā
    Parametri parametriTemp;
   EEPROM.get(0, parametriTemp);
-  /*if(
-    parametriTemp.versija==parametri.versija 
-    && parametriTemp.versija==parametri.versija 
+  if(    
+      parametriTemp.Saullekts_Stundas == parametri.Saullekts_Stundas &&
+      parametriTemp.Saullekts_Minutes == parametri.Saullekts_Minutes &&
+
+      parametriTemp.Diena_Stundas ==  parametri.Diena_Stundas &&
+      parametriTemp.Diena_Minutes ==  parametri.Diena_Minutes &&
+
+      parametriTemp.Saulriets_Stundas ==  parametri.Saulriets_Stundas &&
+      parametriTemp.Saulriets_Minutes == parametri.Saulriets_Minutes &&
+
+      parametriTemp.Nakts_Stundas == parametri.Nakts_Stundas &&
+      parametriTemp.Nakts_Minutes == parametri.Nakts_Minutes &&
+
+      parametriTemp.BaroNedelasDienas == parametri.BaroNedelasDienas &&
+      parametriTemp.Barosana_Stundas == parametri.Barosana_Stundas &&
+      parametriTemp.Barosana_Minutes == parametri.Barosana_Minutes &&
+      
+      parametriTemp.CO2On_Stundas == parametri.CO2On_Stundas &&
+      parametriTemp.CO2On_Minutes == parametri.CO2On_Minutes &&
+
+      parametriTemp.CO2Off_Stundas == parametri.CO2Off_Stundas &&
+      parametriTemp.CO2Off_Minutes == parametri.CO2Off_Minutes &&
+
+      parametriTemp.CO2Izmatosana==parametri.CO2Izmatosana &&
+      parametriTemp.Temp==parametri.Temp &&
+      parametriTemp.TempTrauksme==parametri.TempTrauksme &&       
+
+      parametriTemp.versija==parametri.versija 
   ){
+    //Dati nav mainīt
     return;
   }
-  */
-
+  
   //Saglabā parametrus - max 10 000 reizes progammas atmiņā vai 100 000 EEPROM
    EEPROM.put(0, parametri);  
 }
 
-// ===========================================================================  Parametri Beigas
+
  
- 
+ //****************************************************************************** DHT izstabas mitruma un temperatūras sensors ******************************************//
 /*
 DHT sensora inicialzēšana lai notestētu tā darebību
-Iespējams DHT sensora fizisks bojājums, tāpēc atstāju oficiālo sebuga kodu didliotekai, lai varētu notestēt, kad būs iespējams nomainīt sensoru
+Iespējams DHT sensora fizisks bojājums, tāpēc atstāju oficiālo debuga kodu didliotekai, lai varētu notestēt, kad būs iespējams nomainīt sensoru
 
 uint32_t delayMS;
 void DHT_setup() {
@@ -2224,31 +2246,32 @@ static bool measure_environment() {
    }
 }
     
+//***************************************************************   Vadības poga *************************************************//
+
  int btnStateLast=0;  
  unsigned long lastButtonPress = 0;
 
  bool Enkoders () {
+  // Izmantos paraugs no https://lastminuteengineers.com/rotary-encoder-arduino-tutorial/
+    // Read the button state
+    int btnState = digitalRead(Enkoders_SW);
 
-	// Read the button state
-	int btnState = digitalRead(Enkoders_SW);
-
-	//If we detect LOW signal, button is pressed
-	if (btnState == LOW && btnStateLast != btnState) {
-		
+    //If we detect LOW signal, button is pressed
+    if (btnState == LOW && btnStateLast != btnState) {     
     
-    //if 50ms have passed since last LOW pulse, it means that the
-		//button has been pressed, released and pressed again
-		if (millis() - lastButtonPress > 50) {
-				lastButtonPress = millis();
-        btnStateLast=btnState;    
-        return true;
-		}
+        //if 50ms have passed since last LOW pulse, it means that the
+        //button has been pressed, released and pressed again
+        if (millis() - lastButtonPress > 50) {
+            lastButtonPress = millis();
+            btnStateLast=btnState;    
+            return true;
+        }
 
-		// Remember last button press event
-		lastButtonPress = millis();
-    btnStateLast=btnState;
-    return false;
-	}
+        // Remember last button press event
+        lastButtonPress = millis();
+        btnStateLast=btnState;
+        return false;
+	  }
 
   btnStateLast=btnState;
 	// Put in a slight delay to help debounce the reading
@@ -2259,7 +2282,6 @@ static bool measure_environment() {
 void updateEncoder()
 {
 	// Paraugs no https://lastminuteengineers.com/rotary-encoder-arduino-tutorial/
-
   // Read the current state of CLK
 	currentStateCLK = digitalRead(Enkoders_CLK);
 
@@ -2283,20 +2305,18 @@ void updateEncoder()
 }
 
 
+/*********************************************************************************************************************************************************************************
+                                                                        Barosana
+*********************************************************************************************************************************************************************************/
+
 void SaktBarotFunkcija() 
 {
-  PedejasBarosanasDatums=pulkstenis.now();
+  PedejasBarosanasDatums=now;
   pedejaBarosana = now.day();
   if(barosanaOn == 0){
     barosanaOn = millis();
   }
 }
-
-
-/*********************************************************************************************************************************************************************************
-                                                                        Barosana
-*********************************************************************************************************************************************************************************/
-
 
 static const unsigned long BarosanasCiklaVienaGradaIlgums = 50; //decimalsekundes
 static const unsigned long BarosanasMotoraMaxPagriezienaLenkis = 180;
@@ -2342,8 +2362,7 @@ void BarosanasVeiksana()
 
 void DarbibuIeslegsana() 
 {
-
-    //now = pulkstenis.now();
+  
     int minutesNoDienasSakuma = now.hour()*60+now.minute();
     //pārbauda vai jābaro
      if (pedejaBarosana != now.day()) {
@@ -2424,7 +2443,7 @@ void DarbibuIeslegsana()
     }
 
 
-    //Temperatura 
+    //Temperatūra 
 
     if(tempAkvarija< parametri.Temp +parametri.TempTrauksme-2){
       digitalWrite(RelejaPins_Silditajs, LOW);
@@ -2447,6 +2466,7 @@ void DarbibuIeslegsana()
       }
   }
 }
+
 /*********************************************************************************************************************************************************************************
                                                                         SETUPS
 *********************************************************************************************************************************************************************************/
@@ -2482,7 +2502,7 @@ void setup()
 
  //LCD ekrana sagatavoošana
   lcd.init();   
-  // Maštaisīto simbolu inicializēšana  
+  // Paštaisīto simbolu inicializēšana  
   lcd.createChar(Zivs,Simboli_Zivs);
   lcd.createChar(GaraisMazais_ee, Simboli_ee);
   lcd.createChar(Latviesu_sh, Simboli_Sh);
@@ -2492,7 +2512,7 @@ void setup()
   lcd.createChar(6, Simboli_Saulriets);
   lcd.createChar(7, Simboli_Nakts);
   
-
+  //Ieslēdz ekrāna gaismu
   lcd.backlight();
   
   pulkstenis.begin();       // initialize rtc
@@ -2514,8 +2534,9 @@ fonaGaisma=false;
 fonaGaismaUzstaditaVertiba=true;
 
  
- // DHT nedarbijas, iespējams sensora bojājuma dēļ, tādēļ izkomentēts
+ // DHT nedarbojas, iespējams sensora bojājuma dēļ, tādēļ izkomentēts
  //DHT_setup();
+ dht.begin();
 }
 
 /*********************************************************************************************************************************************************************************
@@ -2526,17 +2547,15 @@ fonaGaismaUzstaditaVertiba=true;
 
 void loop()
 {
-
     
  // DHT nedarbijas, iespējams sensora bojājuma dēļ, tādēļ izkomentēts
  //measure_environment();
  
-  //Mēra temp akvārijā
-  sensors.requestTemperatures();     
-  tempAkvarija=sensors.getTempCByIndex(0);   
-  
+//Mēra temp akvārijā
+sensors.requestTemperatures();     
+tempAkvarija=sensors.getTempCByIndex(0);   
 
-        
+// nolasa pulksteni       
 now = pulkstenis.now();
 
 DarbibuIeslegsana();
@@ -2548,6 +2567,7 @@ BarosanasVeiksana();
 delay(2);   //Nogaida 2 milisekundes katrā ciklā, lai paspēj kontakti nodzirksteļot un nomierināties
 
 /*
+//  Izkoomentēts, lai prezentējot prototipu neizslēgtos ekrana apgasmojums
 if(fonaGaismaUzstaditaVertiba!=fonaGaisma){
  //Maina fona gaismu, ja tā nav uztādīta atbilstoši vajadzībai
   if(fonaGaisma){
